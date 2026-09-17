@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --color-maroon-500: #A3284E;
+  --color-maroon-600: #8B1E3F;
+  --color-maroon-700: #64152D;
+  --color-maroon-800: #4A0E20;
+  
+  --color-gold-300: #E6C5A5;
+  --color-gold-400: #DEB48B;
+  --color-gold-500: #D4A373;
+  --color-gold-600: #B88555;
+
+  --color-cream-50: #FFF9F5;
+  --color-cream-100: #FDF2E9;
+  --color-cream-200: #F9E7D8;
+
+  --color-rose-50: #F8EDE8;
+  --color-rose-100: #F2DDD3;
+  --color-rose-200: #E8C8B9;
+
+  --color-dark-700: #423636;
+  --color-dark-800: #2D2424;
+  --color-dark-900: #1A1414;
+
+  --color-muted-400: #948888;
+  --color-muted-500: #756B6B;
+  --color-muted-600: #5C5252;
+}
+
+@layer base {
+  body {
+    background-color: #FFF9F5;
+    color: #2D2424;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+/* Custom scrollbar & subtle styles */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #FFF9F5;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4A373;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8B1E3F;
+}
+
