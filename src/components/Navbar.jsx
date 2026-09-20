@@ -11,10 +11,10 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
 
   const navLinks = [
     { name: 'Home', path: '/' },
-    { name: 'Browse Profiles', path: '/profiles' },
     { name: 'How It Works', path: '/how-it-works' },
     { name: 'About Us', path: '/about' },
     { name: 'Success Stories', path: '/success-stories' },
+    { name: 'Contact', path: '/contact' },
   ];
 
   const isActive = (path) => {
@@ -38,7 +38,7 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
                 Adarsh<span className="text-gold-500">Vivah</span>
               </span>
               <span className="text-[10px] uppercase font-semibold text-muted-500 tracking-widest block -mt-1">
-                Timeless Matrimony
+                Where Traditions Meet Timeless Connections
               </span>
             </div>
           </Link>
@@ -62,16 +62,13 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
 
           {/* Desktop Right Action Area */}
           <div className="hidden lg:flex items-center gap-3">
-            <Link to="/admin" className="text-xs font-semibold text-gold-600 hover:text-gold-700 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200/80 transition-colors mr-1">
-              Admin Demo
-            </Link>
-
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
                 <Link to="/dashboard" className="flex items-center gap-2 p-1.5 rounded-full hover:bg-rose-50 transition-colors">
                   <img
                     src={CURRENT_USER.photo}
                     alt={CURRENT_USER.name}
+                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800'; }}
                     className="w-9 h-9 rounded-full object-cover border-2 border-gold-400"
                   />
                   <div className="text-left text-xs">
@@ -108,7 +105,7 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
                 </Link>
                 <Link to="/register">
                   <Button variant="primary" size="sm" icon={Sparkles}>
-                    Register Free
+                    Create Profile
                   </Button>
                 </Link>
               </div>
@@ -116,13 +113,11 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="lg:hidden flex items-center gap-2">
-            <Link to="/admin" className="text-[11px] font-semibold text-gold-600 px-2 py-1 rounded bg-amber-50 border border-amber-200">
-              Admin
-            </Link>
+          <div className="lg:hidden flex items-center">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-xl text-dark-800 hover:bg-rose-50 transition-colors"
+              aria-label="Toggle mobile menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>

@@ -33,6 +33,12 @@ export const ProfileCard = ({ profile, onShortlistToggle, onSendInterest }) => {
         <img 
           src={profile.photo} 
           alt={profile.name}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = profile.gender === 'Female' 
+              ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=800'
+              : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800';
+          }}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-dark-900/80 via-dark-900/20 to-transparent" />
