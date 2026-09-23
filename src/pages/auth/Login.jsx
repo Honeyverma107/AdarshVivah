@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Heart, 
   Lock, 
@@ -9,26 +9,34 @@ import {
   ShieldCheck, 
   Sparkles, 
   ArrowRight,
-  UserCheck,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import Button from '../../components/Button';
 import VerifiedBadge from '../../components/VerifiedBadge';
+import { useAuth } from '../../context/AuthContext';
 
 export const Login = () => {
-  const [identifier, setIdentifier] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+
+  const [identifier, setIdentifier] = useState(location.state?.registeredEmail || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  // Frontend-only validation state
+  // Validation & Auth API state
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const validate = (values) => {
     const errs = {};
     if (!values.identifier.trim()) {
-      errs.identifier = 'Please enter your email or mobile number.';
+      errs.identifier = 'Please enter your email address.';
     }
     if (!values.password.trim()) {
       errs.password = 'Please enter your password.';
@@ -41,15 +49,23 @@ export const Login = () => {
     setErrors(validate({ identifier, password }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setApiError('');
     const validationErrors = validate({ identifier, password });
     setErrors(validationErrors);
     setTouched({ identifier: true, password: true });
 
     if (Object.keys(validationErrors).length === 0) {
-      // Frontend-only UI interaction (no real backend auth)
-      console.log('Login form submitted (Frontend UI Mode)', { identifier, rememberMe });
+      setIsSubmitting(true);
+      const result = await login(identifier, password);
+      setIsSubmitting(false);
+
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setApiError(result.error);
+      }
     }
   };
 
@@ -137,16 +153,32 @@ export const Login = () => {
               </p>
             </div>
 
+            {/* Session Expired Banner */}
+            {(location.search.includes('session_expired=true') || location.state?.sessionExpired) && !apiError && (
+              <div className="mb-5 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-xs font-semibold text-amber-900 flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-gold-600 shrink-0" />
+                <span>Your session has expired. Please log in again.</span>
+              </div>
+            )}
+
+            {/* Backend API Error Banner */}
+            {apiError && (
+              <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-2xl text-xs font-semibold text-red-700 flex items-center gap-2.5 animate-fadeIn">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{apiError}</span>
+              </div>
+            )}
+
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               
-              {/* Field 1: Email or Mobile Number */}
+              {/* Field 1: Email Address */}
               <div>
                 <label 
                   htmlFor="identifier" 
                   className="block text-xs font-bold text-dark-800 uppercase tracking-wider mb-1.5"
                 >
-                  Email or Mobile Number
+                  Email Address
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-400">
@@ -154,14 +186,16 @@ export const Login = () => {
                   </div>
                   <input
                     id="identifier"
-                    type="text"
+                    type="email"
                     value={identifier}
                     onChange={(e) => {
                       setIdentifier(e.target.value);
                       if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: '' }));
+                      if (apiError) setApiError('');
                     }}
                     onBlur={() => handleBlur('identifier')}
-                    placeholder="Enter your email or mobile number"
+                    placeholder="Enter your email"
+                    disabled={isSubmitting}
                     className={`w-full bg-cream-50 text-dark-800 text-xs sm:text-sm rounded-xl pl-10 pr-4 py-3 border transition-colors font-medium focus:outline-none focus:ring-2 ${
                       touched.identifier && errors.identifier
                         ? 'border-red-400 focus:ring-red-500 bg-red-50/20'
@@ -203,9 +237,11 @@ export const Login = () => {
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+                      if (apiError) setApiError('');
                     }}
                     onBlur={() => handleBlur('password')}
                     placeholder="Enter your password"
+                    disabled={isSubmitting}
                     className={`w-full bg-cream-50 text-dark-800 text-xs sm:text-sm rounded-xl pl-10 pr-11 py-3 border transition-colors font-medium focus:outline-none focus:ring-2 ${
                       touched.password && errors.password
                         ? 'border-red-400 focus:ring-red-500 bg-red-50/20'
@@ -247,10 +283,11 @@ export const Login = () => {
                 variant="primary" 
                 size="lg" 
                 fullWidth 
-                icon={ArrowRight}
+                icon={isSubmitting ? Loader2 : ArrowRight}
+                disabled={isSubmitting}
                 className="shadow-md shadow-maroon-900/10 mt-2"
               >
-                Login
+                {isSubmitting ? 'Logging in...' : 'Login'}
               </Button>
 
             </form>
@@ -268,11 +305,11 @@ export const Login = () => {
             {/* Registration CTA */}
             <div className="text-center bg-cream-50 p-4 rounded-2xl border border-rose-100 flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="text-xs font-medium text-muted-600">
-                New to AdarshVivah?
+                Don't have an account?
               </span>
               <Link to="/register" className="w-full sm:w-auto">
                 <Button variant="gold" size="sm" icon={Sparkles} className="w-full sm:w-auto">
-                  Create Your Profile
+                  Create an Account
                 </Button>
               </Link>
             </div>
@@ -292,4 +329,3 @@ export const Login = () => {
   );
 };
 export default Login;
-

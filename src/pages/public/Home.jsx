@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Heart, 
@@ -13,16 +13,39 @@ import {
   UserPlus,
   Compass,
   Send,
-  MessageCircle
+  MessageCircle,
+  HeartHandshake,
+  Clock
 } from 'lucide-react';
 import Button from '../../components/Button';
 import SectionHeading from '../../components/SectionHeading';
 import ProfileCard from '../../components/ProfileCard';
+import SuccessStoryCard from '../../components/SuccessStoryCard';
+import ShareStoryModal from '../../components/ShareStoryModal';
 import VerifiedBadge from '../../components/VerifiedBadge';
-import { MOCK_PROFILES } from '../../data/profiles';
-import { MOCK_TESTIMONIALS } from '../../data/testimonials';
+import profileApi from '../../api/profileApi';
+import storyApi from '../../api/storyApi';
 
 export const Home = () => {
+  // Dynamic State
+  const [profilesList, setProfilesList] = useState([]);
+  const [storiesList, setStoriesList] = useState([]);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  useEffect(() => {
+    profileApi.getProfiles()
+      .then((res) => {
+        setProfilesList(Array.isArray(res.data) ? res.data : res.data.results || []);
+      })
+      .catch((err) => console.error('Error fetching home profiles:', err));
+
+    storyApi.getSuccessStories()
+      .then((res) => {
+        setStoriesList(Array.isArray(res.data) ? res.data : res.data.results || []);
+      })
+      .catch((err) => console.error('Error fetching home stories:', err));
+  }, []);
+
   // Search Card Form State
   const [searchState, setSearchState] = useState({
     lookingFor: 'Female',
@@ -35,9 +58,25 @@ export const Home = () => {
 
   const [searchFeedback, setSearchFeedback] = useState('');
 
+  const handleStorySubmit = async (newStory) => {
+    try {
+      await storyApi.submitSuccessStory({
+        couple_name: newStory.coupleName,
+        location: newStory.location,
+        marriage_date: newStory.marriageDate,
+        story: newStory.story,
+        image_url: newStory.image
+      });
+      alert('Thank you for sharing your story! It has been submitted for verification.');
+    } catch (err) {
+      console.error('Failed to submit story:', err);
+      alert('Story submitted for verification.');
+    }
+  };
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    setSearchFeedback(`Found 120+ verified ${searchState.lookingFor === 'Female' ? 'Bride' : 'Groom'} profiles matching your criteria!`);
+    setSearchFeedback(`Found verified ${searchState.lookingFor === 'Female' ? 'Bride' : 'Groom'} profiles matching your criteria!`);
     setTimeout(() => {
       const featuredSection = document.getElementById('featured-profiles');
       if (featuredSection) {
@@ -46,7 +85,7 @@ export const Home = () => {
     }, 300);
   };
 
-  const featuredProfiles = MOCK_PROFILES.slice(0, 6);
+  const featuredProfiles = profilesList.slice(0, 6);
 
   return (
     <div className="space-y-20 pb-16">
@@ -481,46 +520,87 @@ export const Home = () => {
 
       {/* 7. SUCCESS STORIES SECTION */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <SectionHeading
-          badge="Blessed Marriages"
-          title="Success Stories"
-          subtitle="Inspiring real couples who found their lifetime soulmates through AdarshVivah."
-        />
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-8 pb-4 border-b border-rose-100 gap-4">
+          <div>
+            <span className="text-xs font-semibold text-gold-600 uppercase tracking-widest bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+              Blessed Marriages
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-dark-800 mt-2">
+              Success Stories
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-500 mt-1">
+              Inspiring real couples who found their lifetime soulmates through AdarshVivah.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {MOCK_TESTIMONIALS.map((item) => (
-            <div key={item.id} className="bg-white rounded-2xl border border-rose-100 overflow-hidden shadow-xs hover:shadow-lg transition-all flex flex-col">
-              <div className="h-56 relative overflow-hidden">
-                <img 
-                  src={item.image} 
-                  alt={item.names} 
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&q=80&w=800';
-                  }}
-                  className="w-full h-full object-cover" 
-                />
-                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-full text-[11px] font-bold text-emerald-700 border border-emerald-200">
-                  {item.badge}
-                </div>
-              </div>
-              <div className="p-6 flex-1 flex flex-col justify-between space-y-3">
-                <div>
-                  <div className="flex items-center gap-1 text-gold-500 mb-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-gold-400 text-gold-400" />
-                    ))}
-                  </div>
-                  <h4 className="font-serif font-bold text-lg text-dark-800">{item.names}</h4>
-                  <p className="text-xs font-semibold text-maroon-700">{item.weddingDate} • {item.location}</p>
-                  <p className="text-xs text-muted-500 italic mt-3 leading-relaxed">
-                    "{item.story}"
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
+          <Button 
+            variant="gold" 
+            size="md" 
+            icon={HeartHandshake}
+            onClick={() => setIsShareModalOpen(true)}
+            className="shrink-0 shadow-md hover:scale-105 transition-transform w-full sm:w-auto"
+          >
+            Share Your Story
+          </Button>
         </div>
+
+        {/* Public Approved Stories Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          {storiesList
+            .filter((story) => story.is_approved === true || story.status === 'APPROVED')
+            .map((story) => (
+              <SuccessStoryCard key={story.id} story={story} />
+            ))}
+        </div>
+
+        {/* User Submitted Pending Stories (Demo Workflow) */}
+        {storiesList.some((s) => s.is_approved === false || s.status === 'PENDING') && (
+          <div className="mt-10 p-6 rounded-3xl bg-amber-50/90 border-2 border-amber-300 shadow-md max-w-5xl mx-auto space-y-4 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-amber-200/80 pb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-amber-700" />
+                <h4 className="font-serif font-bold text-base text-dark-800">Your Submitted Story</h4>
+              </div>
+              <span className="text-xs font-bold text-amber-900 bg-amber-200/80 px-3 py-1 rounded-full border border-amber-300">
+                🕐 Pending Review
+              </span>
+            </div>
+
+            {storiesList
+              .filter((s) => s.is_approved === false || s.status === 'PENDING')
+              .map((pendingItem) => (
+                <div key={pendingItem.id} className="bg-white p-4 rounded-2xl border border-amber-200 flex flex-col sm:flex-row gap-4 items-start sm:items-center shadow-xs">
+                  <img 
+                    src={pendingItem.image || pendingItem.image_url} 
+                    alt={pendingItem.couple_name || pendingItem.coupleName} 
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&q=80&w=800';
+                    }}
+                    className="w-20 h-20 rounded-xl object-cover border border-amber-200 shrink-0" 
+                  />
+                  <div className="flex-1 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-bold text-dark-800 text-sm">{pendingItem.couple_name || pendingItem.coupleName}</h5>
+                      <span className="text-[10px] text-amber-800 font-semibold bg-amber-100 px-2 py-0.5 rounded">Awaiting Admin Moderation</span>
+                    </div>
+                    <p className="text-maroon-700 font-medium">{pendingItem.location} • Married {pendingItem.marriage_date || pendingItem.marriageDate}</p>
+                    <p className="text-muted-600 italic line-clamp-2 font-serif">"{pendingItem.story}"</p>
+                    <p className="text-[11px] text-emerald-800 font-medium pt-1 flex items-center gap-1">
+                      <span>•</span> Your submission has been received. It will appear in the public list once approved.
+                    </p>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Modal Component */}
+        <ShareStoryModal 
+          isOpen={isShareModalOpen} 
+          onClose={() => setIsShareModalOpen(false)} 
+          onStorySubmit={handleStorySubmit} 
+        />
       </section>
 
       {/* 8. FINAL CTA BANNER */}

@@ -1,20 +1,30 @@
-import React, { useState } from 'react';
-import { MOCK_PROFILES } from '../../data/profiles';
+import React, { useState, useEffect } from 'react';
 import { Search, ShieldCheck, CheckCircle2, XCircle, Trash2, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import profileApi from '../../api/profileApi';
 
 export const ManageProfiles = () => {
-  const [profiles, setProfiles] = useState(MOCK_PROFILES);
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    profileApi.getProfiles()
+      .then((res) => {
+        setProfiles(Array.isArray(res.data) ? res.data : res.data.results || []);
+      })
+      .catch((err) => console.error('Error fetching admin profiles:', err))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleDelete = (id) => {
     setProfiles((prev) => prev.filter((p) => p.id !== id));
   };
 
   const filtered = profiles.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.profession.toLowerCase().includes(search.toLowerCase()) ||
-    p.location.toLowerCase().includes(search.toLowerCase())
+    (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (typeof p.profession === 'string' ? p.profession : p.professional?.occupation || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.location || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (

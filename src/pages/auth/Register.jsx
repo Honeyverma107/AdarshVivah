@@ -2,407 +2,435 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Heart, 
-  User, 
-  BookOpen, 
-  Briefcase, 
+  Lock, 
+  Mail, 
+  User,
+  Eye, 
+  EyeOff, 
+  ShieldCheck, 
   Sparkles, 
-  ArrowRight, 
-  ArrowLeft, 
-  CheckCircle2, 
-  Upload, 
-  ShieldCheck,
-  Camera
+  ArrowRight,
+  CheckCircle2
 } from 'lucide-react';
 import Button from '../../components/Button';
+import VerifiedBadge from '../../components/VerifiedBadge';
+import api from '../../api/api';
 
-export const Register = ({ onRegisterSuccess }) => {
+export const Register = () => {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
 
   const [formData, setFormData] = useState({
-    // Step 1
-    fullName: 'Siddharth Sharma',
-    gender: 'Male',
-    dateOfBirth: '1996-05-18',
-    phone: '+91 98765 12345',
-    email: 'siddharth.s@example.com',
-    password: 'Password@123',
-
-    // Step 2
-    location: 'Mumbai, Maharashtra',
-    religion: 'Hindu',
-    community: 'Brahmin',
-    motherTongue: 'Hindi',
-    maritalStatus: 'Never Married',
-    height: "5' 10\"",
-
-    // Step 3
-    education: 'M.Tech in Computer Science',
-    college: 'IIT Bombay',
-    profession: 'Senior Software Engineer',
-    company: 'Tech Innovations Pvt Ltd',
-    income: '₹25 - 30 Lakhs P.A.',
-
-    // Step 4
-    prefAgeRange: '23 - 28 Yrs',
-    prefReligion: 'Hindu',
-    prefCommunity: 'Brahmin / Open',
-    prefLocation: 'Mumbai, Pune, Bengaluru',
-    prefEducation: 'Post Graduate / Engineer / MBA',
-
-    // Step 5
-    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800',
-    verificationDoc: 'Aadhaar_Card_Proof.pdf'
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
   });
 
-  const totalSteps = 5;
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleNext = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      // Final Registration Submit
-      if (onRegisterSuccess) onRegisterSuccess();
-      navigate('/dashboard');
+  // Validation state
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
+
+  const validate = (values) => {
+    const errs = {};
+
+    if (!values.fullName.trim()) {
+      errs.fullName = 'Please enter your full name.';
+    }
+
+    if (!values.email.trim()) {
+      errs.email = 'Please enter your email address.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
+      errs.email = 'Please enter a valid email address.';
+    }
+
+    if (!values.password) {
+      errs.password = 'Please enter a password.';
+    } else if (values.password.length < 6) {
+      errs.password = 'Password must be at least 6 characters.';
+    }
+
+    if (!values.confirmPassword) {
+      errs.confirmPassword = 'Please confirm your password.';
+    } else if (values.confirmPassword !== values.password) {
+      errs.confirmPassword = 'Passwords do not match.';
+    }
+
+    return errs;
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    setErrors(validate(formData));
+  };
+
+  const handleChange = (field, value) => {
+    const updated = { ...formData, [field]: value };
+    setFormData(updated);
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: '' }));
+    }
+    if (apiError) {
+      setApiError('');
     }
   };
 
-  const handleBack = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setApiError('');
+    const validationErrors = validate(formData);
+    setErrors(validationErrors);
+    setTouched({
+      fullName: true,
+      email: true,
+      password: true,
+      confirmPassword: true
+    });
+
+    if (Object.keys(validationErrors).length === 0) {
+      setIsSubmitting(true);
+      try {
+        await api.post('/auth/register/', {
+          name: formData.fullName.trim(),
+          email: formData.email.trim(),
+          password: formData.password,
+          confirm_password: formData.confirmPassword,
+        });
+        setIsSubmitting(false);
+        navigate('/login', { state: { registeredEmail: formData.email.trim() } });
+      } catch (err) {
+        setIsSubmitting(false);
+        if (err.response && err.response.data) {
+          const resData = err.response.data;
+          if (typeof resData === 'object') {
+            const fieldErrors = {};
+            if (resData.email) {
+              fieldErrors.email = Array.isArray(resData.email) ? resData.email[0] : resData.email;
+            }
+            if (resData.name) {
+              fieldErrors.fullName = Array.isArray(resData.name) ? resData.name[0] : resData.name;
+            }
+            if (resData.password) {
+              fieldErrors.password = Array.isArray(resData.password) ? resData.password[0] : resData.password;
+            }
+            if (resData.confirm_password) {
+              fieldErrors.confirmPassword = Array.isArray(resData.confirm_password) ? resData.confirm_password[0] : resData.confirm_password;
+            }
+            if (resData.detail) {
+              setApiError(resData.detail);
+            }
+            if (Object.keys(fieldErrors).length > 0) {
+              setErrors((prev) => ({ ...prev, ...fieldErrors }));
+            }
+          } else {
+            setApiError('Registration failed. Please try again.');
+          }
+        } else {
+          setApiError('Network error. Please check your connection.');
+        }
+      }
+    }
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-cream-100 to-cream-50">
-      <div className="max-w-2xl w-full bg-white p-8 md:p-10 rounded-3xl border border-rose-200 shadow-xl relative">
+    <div className="min-h-[85vh] flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-cream-100 via-rose-50/40 to-cream-50">
+      <div className="max-w-5xl w-full bg-white rounded-3xl border border-rose-200/90 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[600px]">
         
-        {/* Header */}
-        <div className="text-center space-y-2 mb-8">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 rounded-2xl bg-maroon-600 text-white flex items-center justify-center font-bold shadow-md">
-              <Heart className="w-5 h-5 fill-gold-400 text-gold-400" />
-            </div>
-            <span className="font-serif font-bold text-2xl text-maroon-700">Adarsh<span className="text-gold-500">Vivah</span></span>
-          </Link>
-          <h2 className="text-2xl font-serif font-bold text-dark-800 pt-1">Create Your Matrimonial Profile</h2>
-          <p className="text-xs text-muted-500">Join thousands of verified Indian families</p>
-        </div>
-
-        {/* Step Progress Indicator Bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between text-xs font-semibold text-dark-800 mb-2">
-            <span>Step {currentStep} of {totalSteps}</span>
-            <span className="text-maroon-600">
-              {currentStep === 1 && "Basic Information"}
-              {currentStep === 2 && "Personal & Family Details"}
-              {currentStep === 3 && "Education & Career"}
-              {currentStep === 4 && "Partner Preferences"}
-              {currentStep === 5 && "Photo & Verification"}
-            </span>
-          </div>
-          <div className="w-full bg-rose-100 h-2 rounded-full overflow-hidden">
-            <div
-              className="bg-maroon-600 h-full rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Form Body Step Views */}
-        <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-6">
+        {/* ================= LEFT VISUAL SECTION (Desktop ~45% width) ================= */}
+        <div className="lg:col-span-5 bg-gradient-to-br from-maroon-800 via-maroon-700 to-maroon-900 text-cream-50 p-8 lg:p-10 flex flex-col justify-between relative overflow-hidden order-2 lg:order-1">
           
-          {/* STEP 1: BASIC INFORMATION */}
-          {currentStep === 1 && (
-            <div className="space-y-4">
+          {/* Subtle Decorative Background Glows */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-maroon-500/20 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Brand Header */}
+          <div className="relative z-10 space-y-3">
+            <Link to="/" className="inline-flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-dark-900 shadow-md shadow-gold-500/20 group-hover:scale-105 transition-transform">
+                <Heart className="w-5 h-5 fill-dark-900" />
+              </div>
               <div>
-                <label className="block text-xs font-bold text-dark-800 mb-1">Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  placeholder="Enter full name"
-                  className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                />
+                <span className="font-serif font-bold text-2xl tracking-tight text-white block leading-tight">
+                  Adarsh<span className="text-gold-400">Vivah</span>
+                </span>
+                <span className="text-[10px] uppercase font-semibold text-rose-200 tracking-widest block -mt-0.5">
+                  Where Traditions Meet Timeless Connections
+                </span>
               </div>
+            </Link>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Gender *</label>
-                  <select
-                    value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  >
-                    <option value="Male">Groom (Male)</option>
-                    <option value="Female">Bride (Female)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Date of Birth *</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Mobile Number *</label>
-                  <input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Email Address *</label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2: PERSONAL & FAMILY */}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Current City / Location *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Religion *</label>
-                  <select
-                    value={formData.religion}
-                    onChange={(e) => setFormData({ ...formData, religion: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  >
-                    <option value="Hindu">Hindu</option>
-                    <option value="Sikh">Sikh</option>
-                    <option value="Jain">Jain</option>
-                    <option value="Christian">Christian</option>
-                    <option value="Muslim">Muslim</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Caste / Community *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.community}
-                    onChange={(e) => setFormData({ ...formData, community: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Mother Tongue *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.motherTongue}
-                    onChange={(e) => setFormData({ ...formData, motherTongue: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Marital Status *</label>
-                  <select
-                    value={formData.maritalStatus}
-                    onChange={(e) => setFormData({ ...formData, maritalStatus: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  >
-                    <option value="Never Married">Never Married</option>
-                    <option value="Awaiting Divorce">Awaiting Divorce</option>
-                    <option value="Divorced">Divorced</option>
-                    <option value="Widowed">Widowed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Height *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.height}
-                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: EDUCATION & CAREER */}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-dark-800 mb-1">Highest Qualification *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.education}
-                  onChange={(e) => setFormData({ ...formData, education: e.target.value })}
-                  placeholder="e.g. B.Tech / MBA / MBBS"
-                  className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">College / Institute</label>
-                  <input
-                    type="text"
-                    value={formData.college}
-                    onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-                    placeholder="University / College Name"
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Profession / Designation *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.profession}
-                    onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-dark-800 mb-1">Annual Income *</label>
-                <select
-                  value={formData.income}
-                  onChange={(e) => setFormData({ ...formData, income: e.target.value })}
-                  className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                >
-                  <option value="₹10 - 15 Lakhs P.A.">₹10 - 15 Lakhs P.A.</option>
-                  <option value="₹15 - 25 Lakhs P.A.">₹15 - 25 Lakhs P.A.</option>
-                  <option value="₹25 - 30 Lakhs P.A.">₹25 - 30 Lakhs P.A.</option>
-                  <option value="₹35+ Lakhs P.A.">₹35+ Lakhs P.A.</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: PARTNER PREFERENCES */}
-          {currentStep === 4 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Preferred Age Range</label>
-                  <input
-                    type="text"
-                    value={formData.prefAgeRange}
-                    onChange={(e) => setFormData({ ...formData, prefAgeRange: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-dark-800 mb-1">Preferred Religion</label>
-                  <input
-                    type="text"
-                    value={formData.prefReligion}
-                    onChange={(e) => setFormData({ ...formData, prefReligion: e.target.value })}
-                    className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-dark-800 mb-1">Preferred Cities / Locations</label>
-                <input
-                  type="text"
-                  value={formData.prefLocation}
-                  onChange={(e) => setFormData({ ...formData, prefLocation: e.target.value })}
-                  className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-dark-800 mb-1">Minimum Education Expectation</label>
-                <input
-                  type="text"
-                  value={formData.prefEducation}
-                  onChange={(e) => setFormData({ ...formData, prefEducation: e.target.value })}
-                  className="w-full bg-cream-50 border border-rose-200 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* STEP 5: PHOTO & VERIFICATION */}
-          {currentStep === 5 && (
-            <div className="space-y-6 text-center">
-              <div className="space-y-3">
-                <div className="w-28 h-28 mx-auto rounded-full overflow-hidden border-4 border-gold-400 shadow-md">
-                  <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
-                </div>
-                <p className="text-xs font-semibold text-dark-800">Profile Photo Uploaded</p>
-              </div>
-
-              <div className="p-4 bg-rose-50 rounded-2xl border border-rose-200 text-left space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-maroon-700">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Government ID Verification Document</span>
-                </div>
-                <div className="flex items-center justify-between text-xs bg-white p-2.5 rounded-xl border border-rose-100">
-                  <span className="font-medium text-dark-800">{formData.verificationDoc}</span>
-                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Uploaded</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation Buttons */}
-          <div className="pt-4 flex items-center justify-between gap-4">
-            {currentStep > 1 ? (
-              <Button type="button" onClick={handleBack} variant="secondary" size="md" icon={ArrowLeft}>
-                Back
-              </Button>
-            ) : <div />}
-
-            <Button type="submit" variant="primary" size="md" icon={currentStep === totalSteps ? CheckCircle2 : ArrowRight}>
-              {currentStep === totalSteps ? 'Create Verified Profile' : 'Continue to Next Step'}
-            </Button>
+            <p className="text-xs sm:text-sm text-rose-100 leading-relaxed pt-2 font-normal">
+              Begin your journey toward a meaningful relationship built on trust, values, and compatibility.
+            </p>
           </div>
 
-        </form>
+          {/* Visual Card / Couple Image */}
+          <div className="relative z-10 my-6">
+            <div className="relative mx-auto rounded-2xl overflow-hidden border-2 border-gold-400/60 shadow-xl group">
+              <img 
+                src="https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&q=80&w=800" 
+                alt="AdarshVivah Matrimonial" 
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&q=80&w=800';
+                }}
+                className="w-full h-48 sm:h-56 lg:h-60 object-cover object-top transform group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-dark-900/90 via-dark-900/20 to-transparent" />
+              
+              <div className="absolute bottom-3 left-3 right-3 p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-white">
+                  <Sparkles className="w-4 h-4 text-gold-400 shrink-0" />
+                  <span className="font-semibold text-[11px]">100% Family-Assisted Platform</span>
+                </div>
+                <VerifiedBadge text="Verified" size="xs" />
+              </div>
+            </div>
+          </div>
 
-        {/* Footer Link */}
-        <p className="text-center text-xs text-muted-500 pt-6 border-t border-rose-100 mt-6">
-          Already registered?{' '}
-          <Link to="/login" className="font-bold text-maroon-700 hover:underline">
-            Log In Here
-          </Link>
-        </p>
+          {/* Trust Features Checklist */}
+          <div className="relative z-10 pt-2 border-t border-maroon-600/60 space-y-2 text-xs text-rose-100">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-gold-400 shrink-0" />
+              <span>Government ID & Phone Verified Profiles</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-gold-400 shrink-0" />
+              <span>Strict Photo & Contact Privacy Controls</span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ================= RIGHT FORM CARD (Desktop ~55% width) ================= */}
+        <div className="lg:col-span-7 p-8 sm:p-10 lg:p-12 flex flex-col justify-between order-1 lg:order-2 bg-white">
+          <div>
+            
+            {/* Header */}
+            <div className="space-y-1.5 mb-8">
+              <h2 className="font-serif font-extrabold text-2xl sm:text-3xl text-dark-800 tracking-tight">
+                Create Your Account
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-500">
+                Start your journey toward a meaningful connection.
+              </p>
+            </div>
+
+            {apiError && (
+              <div className="mb-6 p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium">
+                {apiError}
+              </div>
+            )}
+
+            {/* Registration Form */}
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              
+              {/* Field 1: Full Name */}
+              <div>
+                <label 
+                  htmlFor="fullName" 
+                  className="block text-xs font-bold text-dark-800 uppercase tracking-wider mb-1.5"
+                >
+                  Full Name
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-400">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="fullName"
+                    type="text"
+                    value={formData.fullName}
+                    onChange={(e) => handleChange('fullName', e.target.value)}
+                    onBlur={() => handleBlur('fullName')}
+                    placeholder="Enter your full name"
+                    disabled={isSubmitting}
+                    className={`w-full bg-cream-50 text-dark-800 text-xs sm:text-sm rounded-xl pl-10 pr-4 py-3 border transition-colors font-medium focus:outline-none focus:ring-2 ${
+                      touched.fullName && errors.fullName
+                        ? 'border-red-400 focus:ring-red-500 bg-red-50/20'
+                        : 'border-rose-200 focus:border-maroon-600 focus:ring-maroon-600/20'
+                    }`}
+                  />
+                </div>
+                {touched.fullName && errors.fullName && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-red-600 flex items-center gap-1">
+                    <span>•</span> {errors.fullName}
+                  </p>
+                )}
+              </div>
+
+              {/* Field 2: Email */}
+              <div>
+                <label 
+                  htmlFor="email" 
+                  className="block text-xs font-bold text-dark-800 uppercase tracking-wider mb-1.5"
+                >
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-400">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleChange('email', e.target.value)}
+                    onBlur={() => handleBlur('email')}
+                    placeholder="Enter your email"
+                    disabled={isSubmitting}
+                    className={`w-full bg-cream-50 text-dark-800 text-xs sm:text-sm rounded-xl pl-10 pr-4 py-3 border transition-colors font-medium focus:outline-none focus:ring-2 ${
+                      touched.email && errors.email
+                        ? 'border-red-400 focus:ring-red-500 bg-red-50/20'
+                        : 'border-rose-200 focus:border-maroon-600 focus:ring-maroon-600/20'
+                    }`}
+                  />
+                </div>
+                {touched.email && errors.email && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-red-600 flex items-center gap-1">
+                    <span>•</span> {errors.email}
+                  </p>
+                )}
+              </div>
+
+              {/* Field 3: Password */}
+              <div>
+                <label 
+                  htmlFor="password" 
+                  className="block text-xs font-bold text-dark-800 uppercase tracking-wider mb-1.5"
+                >
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => handleChange('password', e.target.value)}
+                    onBlur={() => handleBlur('password')}
+                    placeholder="Create a password"
+                    disabled={isSubmitting}
+                    className={`w-full bg-cream-50 text-dark-800 text-xs sm:text-sm rounded-xl pl-10 pr-11 py-3 border transition-colors font-medium focus:outline-none focus:ring-2 ${
+                      touched.password && errors.password
+                        ? 'border-red-400 focus:ring-red-500 bg-red-50/20'
+                        : 'border-rose-200 focus:border-maroon-600 focus:ring-maroon-600/20'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted-400 hover:text-dark-800 transition-colors cursor-pointer focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {touched.password && errors.password && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-red-600 flex items-center gap-1">
+                    <span>•</span> {errors.password}
+                  </p>
+                )}
+              </div>
+
+              {/* Field 4: Confirm Password */}
+              <div>
+                <label 
+                  htmlFor="confirmPassword" 
+                  className="block text-xs font-bold text-dark-800 uppercase tracking-wider mb-1.5"
+                >
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                    onBlur={() => handleBlur('confirmPassword')}
+                    placeholder="Confirm your password"
+                    disabled={isSubmitting}
+                    className={`w-full bg-cream-50 text-dark-800 text-xs sm:text-sm rounded-xl pl-10 pr-11 py-3 border transition-colors font-medium focus:outline-none focus:ring-2 ${
+                      touched.confirmPassword && errors.confirmPassword
+                        ? 'border-red-400 focus:ring-red-500 bg-red-50/20'
+                        : 'border-rose-200 focus:border-maroon-600 focus:ring-maroon-600/20'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted-400 hover:text-dark-800 transition-colors cursor-pointer focus:outline-none"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {touched.confirmPassword && errors.confirmPassword && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-red-600 flex items-center gap-1">
+                    <span>•</span> {errors.confirmPassword}
+                  </p>
+                )}
+              </div>
+
+              {/* Primary Submit Button */}
+              <Button 
+                type="submit" 
+                variant="primary" 
+                size="lg" 
+                fullWidth 
+                icon={ArrowRight}
+                disabled={isSubmitting}
+                className="shadow-md shadow-maroon-900/10 mt-2"
+              >
+                {isSubmitting ? 'Creating Account...' : 'Create Account'}
+              </Button>
+
+            </form>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-rose-100"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-3 text-muted-400 font-bold tracking-widest">OR</span>
+              </div>
+            </div>
+
+            {/* Login CTA */}
+            <div className="text-center bg-cream-50 p-4 rounded-2xl border border-rose-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-xs font-medium text-muted-600">
+                Already have an account?
+              </span>
+              <Link to="/login" className="w-full sm:w-auto">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  Login
+                </Button>
+              </Link>
+            </div>
+
+          </div>
+
+          {/* Bottom Trust Badge */}
+          <div className="pt-6 mt-6 border-t border-rose-100 flex items-center justify-center gap-2 text-xs text-muted-500">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-medium">Your privacy and security matter to us.</span>
+          </div>
+
+        </div>
 
       </div>
     </div>
   );
 };
+
 export default Register;

@@ -1,33 +1,37 @@
-import React, { useState } from 'react';
-import { MOCK_PROFILES } from '../../data/profiles';
+import React, { useState, useEffect } from 'react';
 import { Search, ShieldCheck, User, Mail, Phone, Lock, Unlock } from 'lucide-react';
+import adminApi from '../../api/adminApi';
 
 export const ManageUsers = () => {
-  const [userList, setUserList] = useState(
-    MOCK_PROFILES.map((p, idx) => ({
-      id: `usr-00${idx + 1}`,
-      name: p.name,
-      email: `${p.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-      phone: `+91 98765 ${10000 + idx * 23}`,
-      status: 'Active',
-      role: idx % 3 === 0 ? 'Parent Managed' : 'Self Registered',
-      photo: p.photo
-    }))
-  );
-
+  const [userList, setUserList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  const toggleStatus = (id) => {
-    setUserList((prev) =>
-      prev.map((u) =>
-        u.id === id ? { ...u, status: u.status === 'Active' ? 'Suspended' : 'Active' } : u
-      )
-    );
+  useEffect(() => {
+    adminApi.getAdminUsers()
+      .then((res) => {
+        setUserList(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch((err) => console.error('Error fetching admin users:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggleVerify = async (userId) => {
+    try {
+      const res = await adminApi.toggleUserVerify(userId);
+      setUserList((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, is_verified: res.data.is_verified } : u
+        )
+      );
+    } catch (err) {
+      console.error('Failed to toggle verification:', err);
+    }
   };
 
   const filtered = userList.filter((u) =>
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
+    (u.name || u.first_name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -79,19 +83,19 @@ export const ManageUsers = () => {
                   <td className="p-3 text-gold-400 font-medium">{user.role}</td>
                   <td className="p-3">
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      user.status === 'Active' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'
+                      user.is_verified ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
                     }`}>
-                      {user.status}
+                      {user.is_verified ? 'Verified' : 'Unverified'}
                     </span>
                   </td>
                   <td className="p-3 text-right">
                     <button
-                      onClick={() => toggleStatus(user.id)}
+                      onClick={() => toggleVerify(user.id)}
                       className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                        user.status === 'Active' ? 'bg-rose-900/60 text-rose-200 hover:bg-rose-800' : 'bg-emerald-700 text-white hover:bg-emerald-600'
+                        user.is_verified ? 'bg-rose-900/60 text-rose-200 hover:bg-rose-800' : 'bg-emerald-700 text-white hover:bg-emerald-600'
                       }`}
                     >
-                      {user.status === 'Active' ? 'Suspend' : 'Activate'}
+                      {user.is_verified ? 'Unverify' : 'Verify Badge'}
                     </button>
                   </td>
                 </tr>

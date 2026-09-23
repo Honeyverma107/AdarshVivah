@@ -11,42 +11,77 @@ import {
   Settings, 
   LogOut,
   ShieldCheck,
-  FileText
+  FileText,
+  MessageSquare,
+  Users
 } from 'lucide-react';
-import { CURRENT_USER } from '../data/profiles';
+import { useState, useEffect } from 'react';
+import { getReceivedInterests, getConversations } from '../api/chatApi';
+import { useAuth } from '../context/AuthContext';
 
 export const Sidebar = ({ onLogout, onOpenBiodata }) => {
   const location = useLocation();
+  const { user } = useAuth();
+  const [receivedCount, setReceivedCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const received = await getReceivedInterests();
+        const pendingCount = received.filter((i) => i.status === 'PENDING').length;
+        setReceivedCount(pendingCount);
+
+        const convs = await getConversations();
+        const totalUnread = convs.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+        setUnreadCount(totalUnread);
+      } catch (e) {
+        // Silent catch if user not logged in
+      }
+    };
+    fetchCounts();
+  }, [location.pathname]);
 
   const menuItems = [
     { name: 'Dashboard Overview', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Messages & Calls', path: '/messages', icon: MessageSquare, count: unreadCount > 0 ? unreadCount : null },
     { name: 'My Profile', path: '/dashboard/my-profile', icon: User },
     { name: 'Recommended Matches', path: '/dashboard/recommended', icon: Sparkles, badge: '90%+ Match' },
     { name: 'Browse Profiles', path: '/profiles', icon: Search },
-    { name: 'Received Interests', path: '/dashboard/received-interests', icon: Inbox, count: 2 },
+    { name: 'Received Interests', path: '/dashboard/received-interests', icon: Inbox, count: receivedCount > 0 ? receivedCount : null },
     { name: 'Sent Interests', path: '/dashboard/sent-interests', icon: Send },
-    { name: 'Shortlisted Profiles', path: '/dashboard/shortlisted', icon: Heart },
+    { name: 'My Shortlist', path: '/dashboard/shortlisted', icon: Heart },
     { name: 'Account Settings', path: '/dashboard/settings', icon: Settings },
   ];
 
   const isActive = (path) => location.pathname === path;
+
+  const currentUserPhoto = user?.photo || "";
+  const currentUserName = user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : (user?.name || user?.email?.split('@')[0] || 'Member');
+  const currentUserId = user?.id ? `ID: AV-${user.id}` : 'Verified Member';
 
   return (
     <aside className="w-full lg:w-64 bg-white border border-rose-100/80 rounded-2xl p-4 shadow-xs space-y-6 shrink-0">
       
       {/* Mini User Card */}
       <div className="p-3 bg-gradient-to-br from-rose-50 to-white rounded-xl border border-rose-200/80 flex items-center gap-3">
-        <img
-          src={CURRENT_USER.photo}
-          alt={CURRENT_USER.name}
-          className="w-12 h-12 rounded-full object-cover border-2 border-gold-400 shrink-0"
-        />
+        {currentUserPhoto ? (
+          <img
+            src={currentUserPhoto}
+            alt={currentUserName}
+            className="w-12 h-12 rounded-full object-cover border-2 border-gold-400 shrink-0"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-cream-100 border-2 border-gold-400 flex items-center justify-center text-maroon-700 font-bold shrink-0">
+            {currentUserName.charAt(0).toUpperCase()}
+          </div>
+        )}
         <div className="min-w-0">
-          <h4 className="font-bold text-dark-800 text-sm truncate">{CURRENT_USER.name}</h4>
+          <h4 className="font-bold text-dark-800 text-sm truncate">{currentUserName}</h4>
           <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
             <ShieldCheck className="w-3 h-3" /> Profile Verified
           </span>
-          <p className="text-[10px] text-muted-500 mt-0.5">{CURRENT_USER.id}</p>
+          <p className="text-[10px] text-muted-500 mt-0.5">{currentUserId}</p>
         </div>
       </div>
 

@@ -1,12 +1,29 @@
-import React, { useState } from 'react';
-import { MOCK_ADMIN_STATS, MOCK_PENDING_PROFILES, MOCK_REPORTED_PROFILES } from '../../data/adminData';
+import React, { useState, useEffect } from 'react';
 import { Users, ShieldCheck, CheckSquare, AlertTriangle, ArrowUpRight, Check, X, Eye } from 'lucide-react';
 import StatCard from '../../components/StatCard';
 import Button from '../../components/Button';
 import { Link } from 'react-router-dom';
+import adminApi from '../../api/adminApi';
 
 export const AdminDashboard = () => {
-  const [pendingList, setPendingList] = useState(MOCK_PENDING_PROFILES);
+  const [stats, setStats] = useState({
+    totalRegisteredUsers: 0,
+    pendingApprovals: 0,
+    verifiedProfiles: 0,
+    reportedProfiles: 0,
+    activeMatches: 0,
+    thisMonthGrowth: '+12%'
+  });
+
+  const [pendingList, setPendingList] = useState([]);
+
+  useEffect(() => {
+    adminApi.getAdminStats()
+      .then((res) => {
+        setStats(res.data);
+      })
+      .catch((err) => console.error('Error fetching admin stats:', err));
+  }, []);
 
   const handleApprove = (id) => {
     setPendingList((prev) => prev.filter((p) => p.id !== id));
@@ -23,10 +40,10 @@ export const AdminDashboard = () => {
       <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-serif font-bold text-white">AdarshVivah Admin Console Overview</h1>
-          <p className="text-xs text-slate-400 mt-1">Platform metric monitor and profile verification workflow demo.</p>
+          <p className="text-xs text-slate-400 mt-1">Platform metric monitor and profile verification workflow.</p>
         </div>
         <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-3 py-1.5 rounded-full">
-          System Operational • 100% Verification Active
+          System Operational • 100% Dynamic DB Active
         </span>
       </div>
 
@@ -34,25 +51,25 @@ export const AdminDashboard = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700">
           <p className="text-xs text-slate-400 font-semibold uppercase">Total Registered Users</p>
-          <h3 className="text-2xl font-bold text-white mt-1">{MOCK_ADMIN_STATS.totalRegisteredUsers.toLocaleString()}</h3>
-          <p className="text-xs text-emerald-400 font-medium mt-1">{MOCK_ADMIN_STATS.thisMonthGrowth} this month</p>
+          <h3 className="text-2xl font-bold text-white mt-1">{(stats?.totalRegisteredUsers || 0).toLocaleString()}</h3>
+          <p className="text-xs text-emerald-400 font-medium mt-1">{stats?.thisMonthGrowth || '+0%'} this month</p>
         </div>
 
         <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700">
           <p className="text-xs text-amber-400 font-semibold uppercase">Pending Approvals</p>
-          <h3 className="text-2xl font-bold text-white mt-1">{pendingList.length}</h3>
-          <p className="text-xs text-slate-400 mt-1">Requires document verification</p>
+          <h3 className="text-2xl font-bold text-white mt-1">{stats?.pendingApprovals || 0}</h3>
+          <p className="text-xs text-slate-400 mt-1">Requires verification</p>
         </div>
 
         <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700">
           <p className="text-xs text-emerald-400 font-semibold uppercase">Verified Profiles</p>
-          <h3 className="text-2xl font-bold text-white mt-1">{MOCK_ADMIN_STATS.verifiedProfiles.toLocaleString()}</h3>
-          <p className="text-xs text-slate-400 mt-1">Government ID checked</p>
+          <h3 className="text-2xl font-bold text-white mt-1">{(stats?.verifiedProfiles || 0).toLocaleString()}</h3>
+          <p className="text-xs text-slate-400 mt-1">Checked members</p>
         </div>
 
         <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700">
           <p className="text-xs text-rose-400 font-semibold uppercase">Reported Profiles</p>
-          <h3 className="text-2xl font-bold text-white mt-1">{MOCK_ADMIN_STATS.reportedProfiles}</h3>
+          <h3 className="text-2xl font-bold text-white mt-1">{stats?.reportedProfiles || 0}</h3>
           <p className="text-xs text-slate-400 mt-1">Under moderation review</p>
         </div>
       </div>

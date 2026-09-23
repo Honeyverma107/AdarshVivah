@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, Heart, ShieldCheck, Quote } from 'lucide-react';
 import SectionHeading from '../../components/SectionHeading';
 import Button from '../../components/Button';
-import { MOCK_TESTIMONIALS } from '../../data/testimonials';
+import storyApi from '../../api/storyApi';
 import { Link } from 'react-router-dom';
 
 export const SuccessStories = () => {
+  const [storiesList, setStoriesList] = useState([]);
+
+  useEffect(() => {
+    storyApi.getSuccessStories()
+      .then((res) => {
+        setStoriesList(Array.isArray(res.data) ? res.data : res.data.results || []);
+      })
+      .catch((err) => console.error('Error loading success stories:', err));
+  }, []);
+
   return (
     <div className="py-12 space-y-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <SectionHeading
@@ -15,12 +25,12 @@ export const SuccessStories = () => {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {MOCK_TESTIMONIALS.map((item) => (
+        {storiesList.map((item) => (
           <div key={item.id} className="bg-white rounded-3xl border border-rose-200 overflow-hidden shadow-xs hover:shadow-xl transition-all flex flex-col">
             <div className="h-64 relative">
-              <img src={item.image} alt={item.names} className="w-full h-full object-cover" />
+              <img src={item.image} alt={item.couple_name || item.names} className="w-full h-full object-cover" />
               <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-xs px-3 py-1 rounded-full text-xs font-bold text-emerald-700 border border-emerald-200 shadow-sm">
-                ✓ {item.badge}
+                ✓ Verified Marriage
               </div>
             </div>
             <div className="p-8 flex-1 flex flex-col justify-between space-y-4">
@@ -30,9 +40,9 @@ export const SuccessStories = () => {
                     <Star key={i} className="w-4 h-4 fill-gold-400" />
                   ))}
                 </div>
-                <h3 className="font-serif font-bold text-xl text-dark-800">{item.names}</h3>
+                <h3 className="font-serif font-bold text-xl text-dark-800">{item.couple_name || item.names}</h3>
                 <p className="text-xs font-semibold text-maroon-700 bg-rose-50 px-3 py-1 rounded-full inline-block border border-rose-100">
-                  {item.weddingDate} • {item.location}
+                  {item.marriage_date || item.weddingDate} • {item.location}
                 </p>
                 <div className="relative pt-2">
                   <Quote className="w-8 h-8 text-rose-200 absolute -top-1 -left-2 -z-0" />

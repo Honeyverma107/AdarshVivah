@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { 
   Eye, 
@@ -10,67 +10,163 @@ import {
   CheckCircle2, 
   Clock, 
   FileText,
-  ShieldCheck
+  ShieldCheck,
+  UserPlus,
+  User,
+  Users
 } from 'lucide-react';
 import DashboardHeader from '../../components/DashboardHeader';
 import StatCard from '../../components/StatCard';
-import ProfileCompletionCard from '../../components/ProfileCompletionCard';
 import ProfileCard from '../../components/ProfileCard';
 import Button from '../../components/Button';
-import { MOCK_DASHBOARD_STATS, MOCK_RECENT_ACTIVITIES } from '../../data/dashboard';
-import { MOCK_PROFILES } from '../../data/profiles';
+import dashboardApi from '../../api/dashboardApi';
+import profileApi from '../../api/profileApi';
+import { useAuth } from '../../context/AuthContext';
 
 export const DashboardOverview = () => {
   const context = useOutletContext();
-  const recommendedProfiles = MOCK_PROFILES.slice(0, 3);
+  const { user } = useAuth();
+
+  const [hasProfile, setHasProfile] = useState(false);
+  const [stats, setStats] = useState({
+    hasProfile: false,
+    profileViews: 0,
+    interestsReceived: 0,
+    interestsSent: 0,
+    myShortlist: 0,
+    acceptedConnections: 0,
+    unreadMessages: 0,
+    recentActivities: []
+  });
+
+  const [recommendedProfiles, setRecommendedProfiles] = useState([]);
+
+  useEffect(() => {
+    dashboardApi.getDashboardStats()
+      .then((res) => {
+        setStats(res.data);
+        if (res.data.hasProfile !== undefined) {
+          setHasProfile(Boolean(res.data.hasProfile));
+        }
+      })
+      .catch((err) => console.error('Error fetching dashboard stats:', err));
+
+    profileApi.getMe()
+      .then(() => setHasProfile(true))
+      .catch((err) => {
+        if (err.response && err.response.status === 404) {
+          setHasProfile(false);
+          setStats(prev => ({ ...prev, hasProfile: false }));
+        }
+      });
+
+    profileApi.getProfiles()
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : res.data.results || [];
+        setRecommendedProfiles(data.slice(0, 3));
+      })
+      .catch((err) => console.error('Error fetching dashboard recommendations:', err));
+  }, []);
 
   return (
     <div className="space-y-6">
       
       {/* Top Header */}
       <DashboardHeader 
-        title="Welcome back, Aditya!" 
+        title={`Welcome back, ${user?.first_name || user?.name || user?.email?.split('@')[0] || 'Member'}!`} 
         subtitle="Here is your active matchmaking summary for this week."
       />
 
+      {/* NEW USER ONBOARDING BANNER (If Profile does not exist) */}
+      {!hasProfile && (
+        <div className="bg-gradient-to-r from-maroon-800 via-maroon-700 to-maroon-900 text-white p-6 md:p-8 rounded-3xl border-2 border-gold-400 shadow-xl relative overflow-hidden space-y-4">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gold-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 space-y-2 max-w-2xl">
+            <span className="text-xs font-bold uppercase tracking-widest text-gold-400 bg-dark-900/40 px-3 py-1 rounded-full border border-gold-400/30 inline-block">
+              Account Created • Next Step Required
+            </span>
+            <h2 className="text-2xl md:text-3xl font-serif font-bold">Welcome to AdarshVivah</h2>
+            <p className="text-xs md:text-sm text-rose-100 leading-relaxed font-normal">
+              Your account is ready. Complete your matrimonial profile to start discovering meaningful matches and receive proposals from compatible families.
+            </p>
+          </div>
+          <div className="pt-2 relative z-10">
+            <Link to="/create-profile">
+              <Button variant="gold" size="lg" icon={Sparkles}>
+                Complete Your Profile
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Stats Overview Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Profile Views"
-          value={MOCK_DASHBOARD_STATS.profileViews}
-          change="+18 this week"
-          icon={Eye}
-          color="sky"
-        />
-        <StatCard
-          title="Interests Received"
-          value={MOCK_DASHBOARD_STATS.interestsReceived}
-          change="2 Pending review"
-          icon={Inbox}
-          color="gold"
-        />
-        <StatCard
-          title="Interests Sent"
-          value={MOCK_DASHBOARD_STATS.interestsSent}
-          change="1 Accepted"
-          icon={Send}
-          color="maroon"
-        />
-        <StatCard
-          title="Shortlisted By"
-          value={MOCK_DASHBOARD_STATS.shortlistedByOthers}
-          change="+4 new"
-          icon={Heart}
-          color="emerald"
-        />
+        <Link to="/dashboard/shortlisted">
+          <StatCard
+            title="My Shortlist"
+            value={stats?.myShortlist || 0}
+            change="Saved profiles"
+            icon={Heart}
+            color="maroon"
+          />
+        </Link>
+        <Link to="/dashboard/received-interests">
+          <StatCard
+            title="Interests Received"
+            value={stats?.interestsReceived || 0}
+            change={`${stats?.interestsReceived || 0} total`}
+            icon={Inbox}
+            color="gold"
+          />
+        </Link>
+        <Link to="/dashboard/sent-interests">
+          <StatCard
+            title="Interests Sent"
+            value={stats?.interestsSent || 0}
+            change={`${stats?.acceptedConnections || 0} Accepted`}
+            icon={Send}
+            color="maroon"
+          />
+        </Link>
+        <div>
+          <StatCard
+            title="Profile Views"
+            value={stats?.profileViews || 0}
+            change="Real-time views"
+            icon={Eye}
+            color="sky"
+          />
+        </div>
       </div>
 
       {/* Main Grid: Profile Completion & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Profile Completion Widget */}
-        <div className="lg:col-span-7">
-          <ProfileCompletionCard completionPercentage={85} />
+        {/* Profile Overview Card */}
+        <div className="lg:col-span-7 bg-gradient-to-br from-rose-50 via-white to-amber-50/30 rounded-2xl border border-rose-200/80 p-6 shadow-xs flex flex-col justify-between space-y-4">
+          <div>
+            <span className="text-xs font-semibold text-maroon-700 uppercase tracking-wider bg-white px-2.5 py-1 rounded-full border border-rose-200">
+              Matrimonial Profile Status
+            </span>
+            <h3 className="text-xl font-serif font-bold text-dark-800 mt-3">
+              {hasProfile ? 'Your Matrimonial Profile is Active' : 'Profile Not Created'}
+            </h3>
+            <p className="text-xs text-muted-500 mt-1 leading-relaxed">
+              {hasProfile 
+                ? 'Your profile details are visible to eligible candidates and verified families across the community.'
+                : 'Create your matrimonial profile to start receiving interest requests and discovering compatible matches.'}
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              to={hasProfile ? '/dashboard/edit-profile' : '/create-profile'}
+              className="inline-flex items-center justify-center py-2.5 px-5 text-xs font-semibold text-white bg-maroon-600 hover:bg-maroon-700 rounded-xl transition-all shadow-sm gap-2"
+            >
+              <User className="w-4 h-4" />
+              {hasProfile ? 'Manage My Profile' : 'Create Profile Now'}
+            </Link>
+          </div>
         </div>
 
         {/* Quick Actions & Biodata Generator Card */}
@@ -99,19 +195,27 @@ export const DashboardOverview = () => {
           </div>
 
           <div className="space-y-2.5 relative z-10">
-            <Button
-              variant="gold"
-              size="md"
-              fullWidth
-              icon={FileText}
-              onClick={() => context?.openBiodataModal && context.openBiodataModal()}
-            >
-              Generate Matrimonial Biodata PDF
-            </Button>
+            {!hasProfile ? (
+              <Link to="/create-profile" className="block">
+                <Button variant="gold" size="md" fullWidth icon={UserPlus}>
+                  Complete Your Profile Now
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="gold"
+                size="md"
+                fullWidth
+                icon={FileText}
+                onClick={() => context?.openBiodataModal && context.openBiodataModal()}
+              >
+                Generate Matrimonial Biodata PDF
+              </Button>
+            )}
 
             <Link to="/dashboard/received-interests" className="block">
               <Button variant="secondary" size="md" fullWidth icon={Inbox}>
-                Review 2 Pending Proposals
+                Review Pending Proposals ({stats?.interestsReceived || 0})
               </Button>
             </Link>
           </div>
@@ -127,20 +231,26 @@ export const DashboardOverview = () => {
         </div>
 
         <div className="space-y-3">
-          {MOCK_RECENT_ACTIVITIES.map((act) => (
-            <div key={act.id} className="flex items-start gap-3 p-3 rounded-xl bg-cream-50/60 border border-rose-100/80">
-              <div className="p-2 rounded-lg bg-rose-100 text-maroon-700 shrink-0 mt-0.5">
-                <Clock className="w-4 h-4" />
-              </div>
-              <div className="flex-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-dark-800">{act.title}</h4>
-                  <span className="text-[10px] text-muted-400">{act.time}</span>
+          {stats?.recentActivities && stats.recentActivities.length > 0 ? (
+            stats.recentActivities.map((act) => (
+              <div key={act.id} className="flex items-start gap-3 p-3 rounded-xl bg-cream-50/60 border border-rose-100/80">
+                <div className="p-2 rounded-lg bg-rose-100 text-maroon-700 shrink-0 mt-0.5">
+                  <Clock className="w-4 h-4" />
                 </div>
-                <p className="text-muted-500 mt-0.5">{act.description}</p>
+                <div className="flex-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-dark-800">{act.title}</h4>
+                    <span className="text-[10px] text-muted-400">{act.time}</span>
+                  </div>
+                  <p className="text-muted-500 mt-0.5">{act.description}</p>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="text-xs text-muted-500 py-3 text-center italic">
+              No recent notifications or activities yet.
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -152,18 +262,49 @@ export const DashboardOverview = () => {
               <Sparkles className="w-5 h-5 text-gold-500 fill-gold-400" />
               Top Recommended Matches (90%+ Fit)
             </h3>
-            <p className="text-xs text-muted-500">Based on your educational background and Brahmin family preferences</p>
+            <p className="text-xs text-muted-500">Based on your educational background and family preferences</p>
           </div>
-          <Link to="/dashboard/recommended" className="text-xs font-semibold text-maroon-700 hover:underline flex items-center gap-1">
-            View All Matches <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          {hasProfile && (
+            <Link to="/dashboard/recommended" className="text-xs font-semibold text-maroon-700 hover:underline flex items-center gap-1">
+              View All Matches <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {recommendedProfiles.map((profile) => (
-            <ProfileCard key={profile.id} profile={profile} />
-          ))}
-        </div>
+        {!hasProfile ? (
+          <div className="bg-white rounded-3xl border border-rose-200 p-8 text-center space-y-4 shadow-xs">
+            <div className="w-14 h-14 bg-rose-50 text-maroon-600 rounded-full flex items-center justify-center mx-auto border border-rose-200 shadow-xs">
+              <Sparkles className="w-7 h-7" />
+            </div>
+            <div className="max-w-md mx-auto space-y-1">
+              <h4 className="font-serif font-bold text-lg text-dark-800">
+                Complete your profile to discover compatible matches.
+              </h4>
+              <p className="text-xs text-muted-500">
+                Matches are generated dynamically based on your community, education, family background, and partner preferences.
+              </p>
+            </div>
+            <div className="pt-2">
+              <Link to="/create-profile">
+                <Button variant="gold" size="md" icon={UserPlus}>
+                  Complete My Profile
+                </Button>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {recommendedProfiles && recommendedProfiles.length > 0 ? (
+              recommendedProfiles.map((profile) => (
+                <ProfileCard key={profile.id} profile={profile} />
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-6 text-xs text-muted-500 italic bg-white rounded-2xl border border-rose-100">
+                No recommended matches found matching your preferences yet.
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
     </div>

@@ -1,29 +1,24 @@
-export const MOCK_TESTIMONIALS = [
+export const MOCK_SUCCESS_STORIES = [
   {
-    id: "t-1",
-    names: "Rajesh & Shivani Sharma",
-    weddingDate: "Married in Dec 2025",
-    location: "Mumbai & Jaipur",
-    story: "AdarshVivah gave us an authentic platform where our families could connect with mutual respect. The verified profiles gave us complete peace of mind, and our shared values made everything click effortlessly.",
+    id: 1,
+    coupleName: "Aarav & Ananya",
+    location: "Indore, Madhya Pradesh",
+    marriageDate: "February 2025",
+    story: "We found each other through AdarshVivah and discovered that our values, family expectations, and life goals were beautifully aligned.",
     image: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&q=80&w=800",
-    badge: "Verified Marriage"
+    badge: "Verified Marriage",
+    status: "APPROVED"
   },
   {
-    id: "t-2",
-    names: "Vikram & Ananya Joshi",
-    weddingDate: "Married in Feb 2026",
-    location: "Pune & Bengaluru",
-    story: "What impressed us most was the Smart Match Recommendations. The 94% compatibility match accurately highlighted our shared educational background and family principles before we even spoke.",
+    id: 2,
+    coupleName: "Rohan & Priya",
+    location: "Bhopal, Madhya Pradesh",
+    marriageDate: "December 2024",
+    story: "AdarshVivah helped us connect with a family that shared similar values and expectations. Our journey from the first conversation to marriage was truly special.",
     image: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&q=80&w=800",
-    badge: "Verified Marriage"
-  },
-  {
-    id: "t-3",
-    names: "Karan & Preeti Nair",
-    weddingDate: "Married in Nov 2025",
-    location: "Delhi & Kochi",
-    story: "The Family-Assisted feature made our parents feel comfortable throughout the search. AdarshVivah truly honours Indian traditions while providing a modern, sleek user experience.",
-    image: "https://images.unsplash.com/photo-1606800052052-a08af7148866?auto=format&fit=crop&q=80&w=800",
-    badge: "Verified Marriage"
+    badge: "Verified Marriage",
+    status: "APPROVED"
   }
 ];
+
+export const MOCK_TESTIMONIALS = MOCK_SUCCESS_STORIES;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import DashboardHeader from '../../components/DashboardHeader';
 import Button from '../../components/Button';
-import { Lock, EyeOff, ShieldCheck, Bell, Save, CheckCircle2 } from 'lucide-react';
+import { Lock, EyeOff, ShieldCheck, Bell, Save, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 export const AccountSettings = () => {
   const [privacy, setPrivacy] = useState({
@@ -14,6 +14,7 @@ export const AccountSettings = () => {
   });
 
   const [saved, setSaved] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   const handleToggle = (key) => {
     setPrivacy((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -36,6 +37,75 @@ export const AccountSettings = () => {
         <div className="p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs font-semibold">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           <span>Privacy & Security settings updated successfully.</span>
+        </div>
+      )}
+
+      {/* Identity Verification Section (Step 11 Placeholder) */}
+      <div className="bg-white rounded-3xl border border-rose-200 p-6 md:p-8 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+          <h3 className="font-serif font-bold text-lg text-dark-800 flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-maroon-600" /> Identity Verification
+          </h3>
+          <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            Status: Not Verified
+          </span>
+        </div>
+
+        <p className="text-xs text-muted-500 leading-relaxed">
+          Verified matrimonial profiles receive up to 4x higher proposal responses and trust badges from candidate families.
+        </p>
+
+        <div className="p-4 bg-cream-50 rounded-2xl border border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <h4 className="font-bold text-xs text-dark-800">Government ID / KYC Verification</h4>
+            <p className="text-[11px] text-muted-500">
+              Secure identity check via DigiLocker / Govt. KYC provider API. No raw Aadhaar numbers or scans stored.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            icon={ShieldCheck}
+            onClick={() => setShowVerifyModal(true)}
+          >
+            Verify Identity
+          </Button>
+        </div>
+      </div>
+
+      {/* Verification Placeholder Modal */}
+      {showVerifyModal && (
+        <div className="fixed inset-0 z-50 bg-dark-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-rose-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+              <h4 className="font-serif font-bold text-base text-dark-800 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-maroon-600" /> Identity Verification Provider
+              </h4>
+              <button onClick={() => setShowVerifyModal(false)} className="text-muted-400 hover:text-dark-800">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-dark-700">
+              <div className="p-3 bg-amber-50 text-amber-800 border border-amber-200 rounded-xl font-medium flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  Integration Placeholder: Government KYC / DigiLocker verification provider integration will be enabled upon production API credentials.
+                </span>
+              </div>
+              <p className="text-muted-500">
+                AdarshVivah respects member privacy. Per Indian data governance guidelines, raw Aadhaar numbers and ID document files are strictly not stored in plain text or local MySQL storage.
+              </p>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <Button variant="secondary" size="sm" onClick={() => setShowVerifyModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

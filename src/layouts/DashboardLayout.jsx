@@ -1,14 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Sidebar from '../components/Sidebar';
 import BiodataModal from '../components/BiodataModal';
-import { CURRENT_USER } from '../data/profiles';
+import ErrorBoundary from '../components/ErrorBoundary';
+import profileApi from '../api/profileApi';
 
 export const DashboardLayout = ({ isLoggedIn = true, onLogout }) => {
   const [isBiodataOpen, setIsBiodataOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    profileApi.getMe()
+      .then((res) => setUserProfile(res.data))
+      .catch((err) => console.error('Error fetching layout profile:', err));
+  }, []);
 
   const handleLogout = () => {
     if (onLogout) onLogout();
@@ -28,20 +36,24 @@ export const DashboardLayout = ({ isLoggedIn = true, onLogout }) => {
             onOpenBiodata={() => setIsBiodataOpen(true)} 
           />
 
-          {/* Main Dashboard Content Outlet */}
+          {/* Main Dashboard Content Outlet Wrapped in ErrorBoundary */}
           <div className="flex-1 min-w-0 space-y-6">
-            <Outlet context={{ openBiodataModal: () => setIsBiodataOpen(true) }} />
+            <ErrorBoundary>
+              <Outlet context={{ openBiodataModal: () => setIsBiodataOpen(true) }} />
+            </ErrorBoundary>
           </div>
 
         </div>
       </main>
 
       {/* Matrimonial Biodata Generator Modal */}
-      <BiodataModal
-        isOpen={isBiodataOpen}
-        onClose={() => setIsBiodataOpen(false)}
-        profile={CURRENT_USER}
-      />
+      {userProfile && (
+        <BiodataModal
+          isOpen={isBiodataOpen}
+          onClose={() => setIsBiodataOpen(false)}
+          profile={userProfile}
+        />
+      )}
 
       <Footer />
     </div>

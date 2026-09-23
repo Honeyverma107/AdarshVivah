@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Heart, 
   MapPin, 
@@ -11,36 +11,245 @@ import {
   ShieldCheck, 
   User, 
   Home, 
-  Coffee, 
   Lock, 
   Flag,
   FileText,
-  Share2,
-  ArrowLeft
+  ArrowLeft,
+  MessageSquare,
+  Phone,
+  Loader2,
+  XCircle,
+  Clock
 } from 'lucide-react';
 import Button from '../../components/Button';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import CompatibilityBadge from '../../components/CompatibilityBadge';
 import BiodataModal from '../../components/BiodataModal';
-import { MOCK_PROFILES } from '../../data/profiles';
+import profileApi from '../../api/profileApi';
+import { 
+  createConversation, 
+  sendInterest, 
+  getInterestStatus, 
+  acceptInterest, 
+  rejectInterest, 
+  cancelInterest 
+} from '../../api/chatApi';
 
 export const ProfileDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   
-  // Find profile or fallback to first
-  const profile = MOCK_PROFILES.find((p) => p.id === id) || MOCK_PROFILES[0];
-
-  const [activePhoto, setActivePhoto] = useState(profile.photo);
-  const [isShortlisted, setIsShortlisted] = useState(profile.shortlisted || false);
-  const [interestStatus, setInterestStatus] = useState(profile.interestStatus || 'none');
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activePhoto, setActivePhoto] = useState('');
+  const [imgError, setImgError] = useState(false);
+  const [isShortlisted, setIsShortlisted] = useState(false);
   const [isBiodataOpen, setIsBiodataOpen] = useState(false);
   const [reported, setReported] = useState(false);
 
-  const handleSendInterest = () => {
-    if (interestStatus === 'none') {
-      setInterestStatus('sent');
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    setImgError(false);
+    profileApi.getProfileById(id)
+      .then((res) => {
+        setProfile(res.data);
+        const photoUrl = res.data.photo || (Array.isArray(res.data.gallery) && res.data.gallery[0]) || '';
+        setActivePhoto(photoUrl);
+        setIsShortlisted(res.data.shortlisted || false);
+      })
+      .catch((err) => console.error('Error fetching profile detail:', err))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const targetUserId = profile?.user_id || (typeof profile?.user === 'object' ? profile?.user?.id : (profile?.user ? Number(profile.user) : (profile?.id ? Number(profile.id) : undefined)));
+  const isValidUserId = Boolean(targetUserId && !isNaN(Number(targetUserId)) && Number(targetUserId) > 0);
+
+  // Dynamic Interest / Connection state from backend
+  const [relStatus, setRelStatus] = useState({
+    status: 'NONE', // 'NONE' | 'PENDING_SENT' | 'PENDING_RECEIVED' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED'
+    interest_id: null,
+    can_message: false,
+    can_call: false,
+    conversation_id: null
+  });
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [interestError, setInterestError] = useState('');
+
+  useEffect(() => {
+    if (!isValidUserId) {
+      setLoadingStatus(false);
+      return;
+    }
+    fetchBackendStatus(Number(targetUserId));
+  }, [targetUserId, isValidUserId]);
+
+  const fetchBackendStatus = async (userId) => {
+    if (!userId || isNaN(userId) || Number(userId) <= 0) {
+      setLoadingStatus(false);
+      return;
+    }
+    setLoadingStatus(true);
+    try {
+      const data = await getInterestStatus(userId);
+      setRelStatus(data);
+    } catch (err) {
+      console.error('Failed to fetch interest status:', err);
+      setRelStatus({
+        status: 'NONE',
+        interest_id: null,
+        can_message: false,
+        can_call: false,
+        conversation_id: null
+      });
+    } finally {
+      setLoadingStatus(false);
     }
   };
+
+  const handleSendInterest = async () => {
+    if (!isValidUserId) return;
+    setActionLoading(true);
+    setInterestError('');
+    try {
+      const data = await sendInterest(Number(targetUserId));
+      if (data.status === 'ACCEPTED') {
+        // Auto-accepted (if mutual)
+        setRelStatus((prev) => ({
+          ...prev,
+          status: 'ACCEPTED',
+          interest_id: data.id,
+          can_message: true,
+          can_call: true
+        }));
+      } else {
+        setRelStatus((prev) => ({
+          ...prev,
+          status: 'PENDING_SENT',
+          interest_id: data.id
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to send interest:', err);
+      const msg = err.response?.data?.detail || err.message || 'Failed to send interest request.';
+      setInterestError(msg);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAcceptInterest = async () => {
+    if (!relStatus.interest_id) return;
+    setActionLoading(true);
+    try {
+      const res = await acceptInterest(relStatus.interest_id);
+      setRelStatus({
+        status: 'ACCEPTED',
+        interest_id: res.id,
+        can_message: true,
+        can_call: true,
+        conversation_id: res.conversation_id
+      });
+    } catch (err) {
+      console.error('Failed to accept interest:', err);
+      alert(err.response?.data?.detail || 'Failed to accept interest.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectInterest = async () => {
+    if (!relStatus.interest_id) return;
+    setActionLoading(true);
+    try {
+      await rejectInterest(relStatus.interest_id);
+      setRelStatus((prev) => ({ ...prev, status: 'REJECTED' }));
+    } catch (err) {
+      console.error('Failed to decline interest:', err);
+      alert(err.response?.data?.detail || 'Failed to decline interest.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCancelInterest = async () => {
+    if (!relStatus.interest_id) return;
+    setActionLoading(true);
+    try {
+      await cancelInterest(relStatus.interest_id);
+      setRelStatus((prev) => ({ ...prev, status: 'NONE', interest_id: null }));
+    } catch (err) {
+      console.error('Failed to cancel interest:', err);
+      alert(err.response?.data?.detail || 'Failed to cancel interest.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!isValidUserId) return;
+    setActionLoading(true);
+    try {
+      if (relStatus.conversation_id) {
+        navigate(`/messages?conversation=${relStatus.conversation_id}`);
+      } else {
+        const conv = await createConversation(targetUserId);
+        navigate(`/messages?conversation=${conv.id}`);
+      }
+    } catch (err) {
+      console.error('Failed to start chat:', err);
+      alert(err.response?.data?.detail || 'Messaging is available after mutual interest acceptance.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const [shortlistLoading, setShortlistLoading] = useState(false);
+
+  const handleShortlistToggle = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!profile?.id || shortlistLoading) return;
+    setShortlistLoading(true);
+    const prevVal = isShortlisted;
+    setIsShortlisted(!prevVal);
+    try {
+      const res = await profileApi.toggleShortlist(profile.id);
+      if (res.data && typeof res.data.shortlisted === 'boolean') {
+        setIsShortlisted(res.data.shortlisted);
+      }
+    } catch (err) {
+      console.error('Failed to toggle shortlist:', err);
+      setIsShortlisted(prevVal);
+      const msg = err.response?.data?.detail || 'Failed to update shortlist status.';
+      alert(msg);
+    } finally {
+      setShortlistLoading(false);
+    }
+  };
+
+  if (loading || !profile) {
+    return (
+      <div className="py-20 text-center text-muted-500 font-medium">
+        Loading profile details...
+      </div>
+    );
+  }
+
+  const educationDisplay = typeof profile.education === 'string'
+    ? profile.education
+    : (profile.educationDetails || profile.education?.degree || 'Graduate');
+
+  const professionDisplay = typeof profile.profession === 'string'
+    ? profile.profession
+    : (profile.professional?.occupation || 'Professional');
+
+  const heightDisplay = profile.height || profile.height_feet_inches || "5' 8\"";
+  const communityDisplay = profile.community || profile.caste || profile.religion || 'General';
+  const whyMatchList = profile.whyMatch || profile.compatibilityFactors || [];
 
   return (
     <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -61,54 +270,187 @@ export const ProfileDetails = () => {
           <div className="bg-white rounded-3xl border border-rose-200 p-5 shadow-xs space-y-4">
             
             {/* Main Photo Frame */}
-            <div className="relative h-96 w-full rounded-2xl overflow-hidden border-2 border-gold-300 shadow-md">
-              <img src={activePhoto} alt={profile.name} className="w-full h-full object-cover" />
+            <div className="relative h-96 w-full rounded-2xl overflow-hidden border-2 border-gold-300 shadow-md bg-cream-100 flex items-center justify-center">
+              {(activePhoto || profile.photo) && !imgError ? (
+                <img 
+                  src={activePhoto || profile.photo} 
+                  alt={profile.name} 
+                  onError={() => setImgError(true)}
+                  className="w-full h-full object-cover" 
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-rose-100/80 via-cream-100 to-amber-100/80 flex flex-col items-center justify-center p-6 text-center">
+                  <div className="w-24 h-24 rounded-full bg-white/90 border-2 border-rose-200 flex items-center justify-center text-maroon-700 shadow-sm mb-3">
+                    <User className="w-12 h-12 stroke-[1.5]" />
+                  </div>
+                  <h3 className="text-base font-serif font-bold text-dark-800">
+                    {profile.name}
+                  </h3>
+                  <span className="text-xs text-muted-500 mt-1">
+                    No Profile Photo Uploaded
+                  </span>
+                </div>
+              )}
               
               <button
-                onClick={() => setIsShortlisted(!isShortlisted)}
+                onClick={handleShortlistToggle}
+                disabled={shortlistLoading}
                 className={`absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-md transition-all z-10 ${
                   isShortlisted ? 'bg-rose-500 text-white' : 'bg-dark-900/50 text-white hover:bg-rose-500'
                 }`}
-                title="Shortlist Profile"
+                title={isShortlisted ? "Remove from Shortlist" : "Shortlist Profile"}
               >
                 <Heart className={`w-5 h-5 ${isShortlisted ? 'fill-white' : ''}`} />
               </button>
 
               <div className="absolute bottom-3 left-3">
-                <CompatibilityBadge score={profile.compatibilityScore} size="lg" />
+                <CompatibilityBadge score={profile.compatibilityScore || 88} size="lg" />
               </div>
             </div>
 
             {/* Photo Gallery Thumbnails */}
-            {profile.gallery && profile.gallery.length > 1 && (
+            {Array.isArray(profile.gallery) && profile.gallery.length > 1 && (
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {profile.gallery.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActivePhoto(img)}
-                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
-                      activePhoto === img ? 'border-maroon-600 scale-105' : 'border-transparent opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={img} alt="Thumb" className="w-full h-full object-cover" />
-                  </button>
-                ))}
+                {profile.gallery.map((img, idx) => {
+                  const imgUrl = typeof img === 'string' ? img : img?.url;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setActivePhoto(imgUrl)}
+                      className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
+                        activePhoto === imgUrl ? 'border-maroon-600 scale-105' : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={imgUrl} alt="Thumb" className="w-full h-full object-cover" />
+                    </button>
+                  );
+                })}
               </div>
             )}
 
-            {/* Primary Action Buttons */}
-            <div className="space-y-2 pt-2">
-              <Button
-                variant={interestStatus === 'sent' ? 'ghost' : interestStatus === 'accepted' ? 'gold' : 'primary'}
-                size="lg"
-                fullWidth
-                onClick={handleSendInterest}
-                disabled={interestStatus === 'sent' || interestStatus === 'accepted'}
-                icon={interestStatus === 'sent' ? CheckCircle2 : Send}
-              >
-                {interestStatus === 'sent' ? 'Interest Sent Request Pending' : interestStatus === 'accepted' ? 'Connected Profile' : 'Express Interest Now'}
-              </Button>
+            {/* Primary Action Buttons (Dynamic Backend Interest State) */}
+            <div className="space-y-2.5 pt-2">
+              {interestError && (
+                <div className="p-3 bg-rose-50 text-rose-800 border border-rose-200 rounded-xl text-xs font-semibold flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{interestError}</span>
+                </div>
+              )}
 
+              {loadingStatus ? (
+                <div className="py-4 text-center text-xs text-muted-400 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-maroon-600" />
+                  <span>Checking connection status...</span>
+                </div>
+              ) : relStatus.status === 'ACCEPTED' || relStatus.can_message ? (
+                /* Connected State: Message & Voice Call */
+                <div className="space-y-2">
+                  <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-center text-xs font-semibold text-emerald-800 flex items-center justify-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Mutual Interest Accepted • Connected</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="primary"
+                      size="md"
+                      onClick={handleStartChat}
+                      disabled={actionLoading}
+                      icon={actionLoading ? Loader2 : MessageSquare}
+                    >
+                      {actionLoading ? 'Opening...' : 'Message'}
+                    </Button>
+
+                    <Button
+                      variant="gold"
+                      size="md"
+                      onClick={handleStartChat}
+                      disabled={actionLoading}
+                      icon={Phone}
+                    >
+                      Voice Call
+                    </Button>
+                  </div>
+                </div>
+              ) : relStatus.status === 'PENDING_SENT' ? (
+                /* Pending Sent State */
+                <div className="space-y-2">
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-center text-xs font-semibold text-amber-900 flex items-center justify-center gap-2">
+                    <Clock className="w-4 h-4 text-gold-600 animate-pulse" />
+                    <span>Interest Sent — Awaiting Response</span>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    fullWidth
+                    onClick={handleCancelInterest}
+                    disabled={actionLoading}
+                    icon={XCircle}
+                    className="text-rose-700 hover:bg-rose-50"
+                  >
+                    Cancel Sent Request
+                  </Button>
+                </div>
+              ) : relStatus.status === 'PENDING_RECEIVED' ? (
+                /* Pending Received State */
+                <div className="space-y-2">
+                  <div className="p-2.5 bg-rose-50 rounded-2xl border border-rose-200 text-center text-xs font-semibold text-maroon-800">
+                    This profile sent an interest request to you!
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="primary"
+                      size="md"
+                      onClick={handleAcceptInterest}
+                      disabled={actionLoading}
+                      icon={CheckCircle2}
+                    >
+                      Accept
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="md"
+                      onClick={handleRejectInterest}
+                      disabled={actionLoading}
+                      icon={XCircle}
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* Default No Request State */
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleShortlistToggle}
+                    disabled={shortlistLoading}
+                    className={`w-full py-3 px-4 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-2 ${
+                      isShortlisted
+                        ? 'bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100 shadow-xs'
+                        : 'bg-white border-rose-200 text-dark-800 hover:bg-rose-50/60 shadow-xs'
+                    }`}
+                  >
+                    <Heart className={`w-4 h-4 ${isShortlisted ? 'fill-rose-600 text-rose-600' : 'text-rose-500'}`} />
+                    <span>{isShortlisted ? '♥ Shortlisted' : '♡ Shortlist'}</span>
+                  </button>
+
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={handleSendInterest}
+                    disabled={actionLoading}
+                    icon={actionLoading ? Loader2 : Send}
+                  >
+                    {actionLoading ? 'Sending...' : 'Send Interest'}
+                  </Button>
+                </div>
+              )}
+
+              {/* Biodata PDF Generator */}
               <Button
                 variant="secondary"
                 size="md"
@@ -126,7 +468,7 @@ export const ProfileDetails = () => {
               <div>
                 <p className="font-semibold text-dark-800">Privacy Control Active</p>
                 <p className="text-[11px] text-muted-500 mt-0.5">
-                  Contact phone number and full family details are unlocked only upon mutual interest acceptance.
+                  Contact phone number and direct messaging are unlocked only upon mutual interest acceptance.
                 </p>
               </div>
             </div>
@@ -157,15 +499,15 @@ export const ProfileDetails = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl md:text-3xl font-serif font-bold text-dark-800">{profile.name}</h1>
-                  {profile.verified && <VerifiedBadge text="Verified Profile" size="md" />}
+                  {(profile.is_verified || profile.verified) && <VerifiedBadge text="Verified Profile" size="md" />}
                 </div>
                 <p className="text-xs md:text-sm font-semibold text-maroon-700 mt-1">
-                  {profile.age} Yrs • {profile.height} • {profile.community} ({profile.religion})
+                  {profile.age} Yrs • {heightDisplay} • {communityDisplay} ({profile.religion || 'Hindu'})
                 </p>
               </div>
               <div className="text-left sm:text-right">
                 <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-                  Income: {profile.income}
+                  Income: {profile.income || profile.professional?.annual_income || 'Disclosed on request'}
                 </span>
               </div>
             </div>
@@ -176,7 +518,7 @@ export const ProfileDetails = () => {
                 <Briefcase className="w-4 h-4 text-gold-600 shrink-0" />
                 <div>
                   <p className="text-muted-400 font-medium text-[10px]">Profession</p>
-                  <p className="font-bold text-dark-800 truncate">{profile.profession}</p>
+                  <p className="font-bold text-dark-800 truncate">{professionDisplay}</p>
                 </div>
               </div>
 
@@ -184,7 +526,7 @@ export const ProfileDetails = () => {
                 <GraduationCap className="w-4 h-4 text-gold-600 shrink-0" />
                 <div>
                   <p className="text-muted-400 font-medium text-[10px]">Education</p>
-                  <p className="font-bold text-dark-800 truncate">{profile.education}</p>
+                  <p className="font-bold text-dark-800 truncate">{educationDisplay}</p>
                 </div>
               </div>
 
@@ -192,7 +534,7 @@ export const ProfileDetails = () => {
                 <MapPin className="w-4 h-4 text-gold-600 shrink-0" />
                 <div>
                   <p className="text-muted-400 font-medium text-[10px]">Location</p>
-                  <p className="font-bold text-dark-800 truncate">{profile.location}</p>
+                  <p className="font-bold text-dark-800 truncate">{profile.location || 'Location Not Specified'}</p>
                 </div>
               </div>
             </div>
@@ -201,19 +543,19 @@ export const ProfileDetails = () => {
             <div className="pt-2">
               <h3 className="font-serif font-bold text-base text-maroon-700 mb-2">About {profile.name}</h3>
               <p className="text-xs md:text-sm text-dark-700 leading-relaxed font-normal bg-rose-50/40 p-4 rounded-2xl border border-rose-100">
-                "{profile.about}"
+                "{profile.about || profile.bio || 'No detailed biography added yet.'}"
               </p>
             </div>
 
             {/* Why This Match Breakdown */}
-            {profile.compatibilityFactors && (
+            {whyMatchList.length > 0 && (
               <div className="pt-2 bg-gradient-to-r from-amber-50/80 to-cream-50 p-4 rounded-2xl border border-amber-200/80 space-y-2">
                 <h4 className="font-serif font-bold text-xs text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-gold-500 fill-gold-400" />
-                  Why This Match? ({profile.compatibilityScore}% Compatibility Fit)
+                  Why This Match? ({profile.compatibilityScore || 88}% Compatibility Fit)
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {profile.compatibilityFactors.map((factor, idx) => (
+                  {whyMatchList.map((factor, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-dark-800 font-medium bg-white/90 p-2 rounded-xl border border-amber-200/60">
                       <span className="w-1.5 h-1.5 rounded-full bg-gold-500 shrink-0"></span>
                       <span>{factor}</span>
@@ -236,23 +578,23 @@ export const ProfileDetails = () => {
               <div className="space-y-2.5 text-xs">
                 <div className="flex justify-between py-1 border-b border-rose-50">
                   <span className="text-muted-500">Marital Status:</span>
-                  <span className="font-semibold text-dark-800">{profile.maritalStatus}</span>
+                  <span className="font-semibold text-dark-800">{profile.maritalStatus || profile.marital_status || 'Never Married'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-rose-50">
                   <span className="text-muted-500">Mother Tongue:</span>
-                  <span className="font-semibold text-dark-800">{profile.motherTongue}</span>
+                  <span className="font-semibold text-dark-800">{profile.motherTongue || profile.mother_tongue || 'Hindi'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-rose-50">
                   <span className="text-muted-500">Dietary Habits:</span>
-                  <span className="font-semibold text-dark-800">{profile.lifestyle?.diet}</span>
+                  <span className="font-semibold text-dark-800">{profile.lifestyle?.diet || 'Not specified'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-rose-50">
                   <span className="text-muted-500">Drinking:</span>
-                  <span className="font-semibold text-dark-800">{profile.lifestyle?.drinking}</span>
+                  <span className="font-semibold text-dark-800">{profile.lifestyle?.drinking || 'Not specified'}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-rose-50">
                   <span className="text-muted-500">Smoking:</span>
-                  <span className="font-semibold text-dark-800">{profile.lifestyle?.smoking}</span>
+                  <span className="font-semibold text-dark-800">{profile.lifestyle?.smoking || 'Not specified'}</span>
                 </div>
               </div>
             </div>
@@ -266,23 +608,25 @@ export const ProfileDetails = () => {
                 <div className="space-y-2.5 text-xs">
                   <div className="flex justify-between py-1 border-b border-rose-50">
                     <span className="text-muted-500">Father Details:</span>
-                    <span className="font-semibold text-dark-800 text-right">{profile.family.father}</span>
+                    <span className="font-semibold text-dark-800 text-right">{profile.family.father || profile.family.father_occupation || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-rose-50">
                     <span className="text-muted-500">Mother Details:</span>
-                    <span className="font-semibold text-dark-800 text-right">{profile.family.mother}</span>
+                    <span className="font-semibold text-dark-800 text-right">{profile.family.mother || profile.family.mother_occupation || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-rose-50">
                     <span className="text-muted-500">Siblings:</span>
-                    <span className="font-semibold text-dark-800 text-right">{profile.family.siblings}</span>
+                    <span className="font-semibold text-dark-800 text-right">
+                      {profile.family.siblings || (profile.family.brothers_count !== undefined ? `${profile.family.brothers_count} Bro, ${profile.family.sisters_count} Sis` : 'N/A')}
+                    </span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-rose-50">
                     <span className="text-muted-500">Family Values:</span>
-                    <span className="font-semibold text-dark-800">{profile.family.familyValues}</span>
+                    <span className="font-semibold text-dark-800">{profile.family.familyValues || profile.family.family_values || profile.family.family_type || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-rose-50">
                     <span className="text-muted-500">Native Place:</span>
-                    <span className="font-semibold text-dark-800">{profile.family.nativePlace}</span>
+                    <span className="font-semibold text-dark-800">{profile.family.nativePlace || profile.family.native_place || 'N/A'}</span>
                   </div>
                 </div>
               ) : (
@@ -301,15 +645,19 @@ export const ProfileDetails = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                 <div className="bg-cream-50 p-3 rounded-xl border border-rose-100">
                   <span className="text-muted-400 font-medium block">Age Expectation</span>
-                  <span className="font-bold text-dark-800">{profile.partnerPreferences.ageRange}</span>
+                  <span className="font-bold text-dark-800">
+                    {profile.partnerPreferences.ageRange || `${profile.partnerPreferences.min_age || 18} - ${profile.partnerPreferences.max_age || 60} Yrs`}
+                  </span>
                 </div>
                 <div className="bg-cream-50 p-3 rounded-xl border border-rose-100">
                   <span className="text-muted-400 font-medium block">Community / Religion</span>
-                  <span className="font-bold text-dark-800">{profile.partnerPreferences.community}</span>
+                  <span className="font-bold text-dark-800">
+                    {profile.partnerPreferences.community || profile.partnerPreferences.religion || profile.partnerPreferences.caste || 'Any'}
+                  </span>
                 </div>
                 <div className="bg-cream-50 p-3 rounded-xl border border-rose-100">
                   <span className="text-muted-400 font-medium block">Preferred Locations</span>
-                  <span className="font-bold text-dark-800">{profile.partnerPreferences.location}</span>
+                  <span className="font-bold text-dark-800">{profile.partnerPreferences.location || 'Any'}</span>
                 </div>
               </div>
             </div>

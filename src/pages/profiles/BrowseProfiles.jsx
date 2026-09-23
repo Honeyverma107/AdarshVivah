@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Grid, List, SlidersHorizontal, ArrowUpDown, Filter } from 'lucide-react';
 import SectionHeading from '../../components/SectionHeading';
@@ -6,10 +6,14 @@ import ProfileCard from '../../components/ProfileCard';
 import SearchFilters from '../../components/SearchFilters';
 import EmptyState from '../../components/EmptyState';
 import Button from '../../components/Button';
-import { MOCK_PROFILES } from '../../data/profiles';
+import profileApi from '../../api/profileApi';
 
 export const BrowseProfiles = () => {
   const [searchParams] = useSearchParams();
+
+  // Profiles State
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -26,32 +30,32 @@ export const BrowseProfiles = () => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  // Filter logic
-  const filteredProfiles = useMemo(() => {
-    return MOCK_PROFILES.filter((profile) => {
-      if (filters.gender && profile.gender !== filters.gender) return false;
-      if (filters.religion !== 'All' && profile.religion !== filters.religion) return false;
-      if (filters.community !== 'All' && profile.community !== filters.community) return false;
-      if (filters.location !== 'All' && !profile.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
-      if (filters.verifiedOnly && !profile.verified) return false;
+  useEffect(() => {
+    setLoading(true);
+    const params = {};
+    if (filters.gender && filters.gender !== 'All') params.gender = filters.gender;
+    if (filters.religion && filters.religion !== 'All') params.religion = filters.religion;
+    if (filters.searchQuery) params.search = filters.searchQuery;
 
-      if (filters.searchQuery) {
-        const q = filters.searchQuery.toLowerCase();
-        const matchesName = profile.name.toLowerCase().includes(q);
-        const matchesProfession = profile.profession.toLowerCase().includes(q);
-        const matchesEducation = profile.education.toLowerCase().includes(q);
-        const matchesCity = profile.location.toLowerCase().includes(q);
-        if (!matchesName && !matchesProfession && !matchesEducation && !matchesCity) return false;
-      }
+    profileApi.getProfiles(params)
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : res.data.results || [];
+        setProfiles(data);
+      })
+      .catch((err) => console.error('Error fetching browse profiles:', err))
+      .finally(() => setLoading(false));
+  }, [filters.gender, filters.religion, filters.searchQuery]);
 
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'match') return (b.compatibilityScore || 0) - (a.compatibilityScore || 0);
-      if (sortBy === 'age_asc') return a.age - b.age;
-      if (sortBy === 'age_desc') return b.age - a.age;
-      return 0;
-    });
-  }, [filters, sortBy]);
+  // Client-side sort/filter refinement
+  const filteredProfiles = profiles.filter((profile) => {
+    if (filters.verifiedOnly && !profile.is_verified) return false;
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === 'match') return (b.compatibilityScore || 0) - (a.compatibilityScore || 0);
+    if (sortBy === 'age_asc') return a.age - b.age;
+    if (sortBy === 'age_desc') return b.age - a.age;
+    return 0;
+  });
 
   const handleFilterChange = (field, value) => {
     setFilters((prev) => ({ ...prev, [field]: value }));

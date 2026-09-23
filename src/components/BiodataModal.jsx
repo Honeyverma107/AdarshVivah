@@ -69,19 +69,19 @@ export const BiodataModal = ({ isOpen, onClose, profile }) => {
               <div className="mt-4 p-3 bg-rose-50/80 rounded-xl border border-rose-200/60 text-left text-xs space-y-1.5">
                 <div className="flex justify-between">
                   <span className="text-muted-500">Age / Height:</span>
-                  <span className="font-semibold text-dark-800">{profile.age} Yrs, {profile.height}</span>
+                  <span className="font-semibold text-dark-800">{profile.age} Yrs, {profile.height || profile.height_feet_inches || "5' 8\""}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-500">Marital Status:</span>
-                  <span className="font-semibold text-dark-800">{profile.maritalStatus}</span>
+                  <span className="font-semibold text-dark-800">{profile.maritalStatus || profile.marital_status || 'Never Married'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-500">Religion:</span>
-                  <span className="font-semibold text-dark-800">{profile.religion}</span>
+                  <span className="font-semibold text-dark-800">{profile.religion || 'Hindu'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-500">Caste/Community:</span>
-                  <span className="font-semibold text-dark-800">{profile.community}</span>
+                  <span className="font-semibold text-dark-800">{profile.community || profile.caste || 'General'}</span>
                 </div>
               </div>
             </div>
@@ -96,12 +96,12 @@ export const BiodataModal = ({ isOpen, onClose, profile }) => {
                   Personal & Professional Details
                 </h4>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  <div><span className="text-muted-500">Date of Birth:</span> <span className="font-medium">{profile.dateOfBirth || '15 April 1997'}</span></div>
-                  <div><span className="text-muted-500">Mother Tongue:</span> <span className="font-medium">{profile.motherTongue}</span></div>
-                  <div><span className="text-muted-500">Education:</span> <span className="font-medium">{profile.education}</span></div>
-                  <div><span className="text-muted-500">Institute:</span> <span className="font-medium">{profile.educationDetails || 'Reputed Institution'}</span></div>
-                  <div><span className="text-muted-500">Designation:</span> <span className="font-medium">{profile.profession}</span></div>
-                  <div><span className="text-muted-500">Annual Income:</span> <span className="font-medium">{profile.income}</span></div>
+                  <div><span className="text-muted-500">Date of Birth:</span> <span className="font-medium">{profile.dateOfBirth || profile.date_of_birth || 'Not specified'}</span></div>
+                  <div><span className="text-muted-500">Mother Tongue:</span> <span className="font-medium">{profile.motherTongue || profile.mother_tongue || 'Hindi'}</span></div>
+                  <div><span className="text-muted-500">Education:</span> <span className="font-medium">{typeof profile.education === 'string' ? profile.education : profile.educationDetails || profile.education?.degree || 'Graduate'}</span></div>
+                  <div><span className="text-muted-500">Institute:</span> <span className="font-medium">{profile.educationDetails || profile.education?.institution || 'Reputed Institution'}</span></div>
+                  <div><span className="text-muted-500">Designation:</span> <span className="font-medium">{typeof profile.profession === 'string' ? profile.profession : profile.professional?.occupation || 'Professional'}</span></div>
+                  <div><span className="text-muted-500">Annual Income:</span> <span className="font-medium">{profile.income || profile.professional?.annual_income || 'Disclosed on request'}</span></div>
                 </div>
               </div>
 
@@ -113,12 +113,12 @@ export const BiodataModal = ({ isOpen, onClose, profile }) => {
                     Family Background
                   </h4>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    <div><span className="text-muted-500">Father:</span> <span className="font-medium">{profile.family.father}</span></div>
-                    <div><span className="text-muted-500">Mother:</span> <span className="font-medium">{profile.family.mother}</span></div>
-                    <div><span className="text-muted-500">Siblings:</span> <span className="font-medium">{profile.family.siblings}</span></div>
-                    <div><span className="text-muted-500">Family Type:</span> <span className="font-medium">{profile.family.familyType}</span></div>
-                    <div><span className="text-muted-500">Native Place:</span> <span className="font-medium">{profile.family.nativePlace}</span></div>
-                    <div><span className="text-muted-500">Family Values:</span> <span className="font-medium">{profile.family.familyValues}</span></div>
+                    <div><span className="text-muted-500">Father:</span> <span className="font-medium">{profile.family.father || profile.family.father_occupation || 'Business / Retd.'}</span></div>
+                    <div><span className="text-muted-500">Mother:</span> <span className="font-medium">{profile.family.mother || profile.family.mother_occupation || 'Homemaker'}</span></div>
+                    <div><span className="text-muted-500">Siblings:</span> <span className="font-medium">{profile.family.siblings || `${profile.family.brothers_count || 0} Brother, ${profile.family.sisters_count || 0} Sister`}</span></div>
+                    <div><span className="text-muted-500">Family Type:</span> <span className="font-medium">{profile.family.familyType || profile.family.family_type || 'Nuclear'}</span></div>
+                    <div><span className="text-muted-500">Native Place:</span> <span className="font-medium">{profile.family.nativePlace || profile.family.native_place || 'India'}</span></div>
+                    <div><span className="text-muted-500">Family Values:</span> <span className="font-medium">{profile.family.familyValues || profile.family.family_values || 'Moderate'}</span></div>
                   </div>
                 </div>
               )}
@@ -131,7 +131,7 @@ export const BiodataModal = ({ isOpen, onClose, profile }) => {
                     Partner Preferences
                   </h4>
                   <p className="text-muted-600 leading-relaxed">
-                    Looking for a well-educated, respectful partner aged {profile.partnerPreferences.ageRange}, preferably in {profile.partnerPreferences.profession} from {profile.partnerPreferences.location}.
+                    Looking for a well-educated, respectful partner aged {profile.partnerPreferences.ageRange || `${profile.partnerPreferences.min_age || 23} - ${profile.partnerPreferences.max_age || 32} Yrs`}, preferably in {profile.partnerPreferences.profession || profile.partnerPreferences.occupation || 'Corporate'} from {profile.partnerPreferences.location || 'India'}.
                   </p>
                 </div>
               )}

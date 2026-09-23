@@ -2,12 +2,21 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Heart, Menu, X, User, ShieldCheck, Sparkles, LogOut, LayoutDashboard } from 'lucide-react';
 import Button from './Button';
-import { CURRENT_USER } from '../data/profiles';
+import { useAuth } from '../context/AuthContext';
 
-export const Navbar = ({ isLoggedIn = false, onLogout }) => {
+export const Navbar = ({ isLoggedIn: propIsLoggedIn, onLogout: propOnLogout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const activeIsLoggedIn = isAuthenticated || propIsLoggedIn;
+
+  const handleLogoutClick = () => {
+    logout();
+    if (propOnLogout) propOnLogout();
+    navigate('/login');
+  };
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -62,17 +71,14 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
 
           {/* Desktop Right Action Area */}
           <div className="hidden lg:flex items-center gap-3">
-            {isLoggedIn ? (
+            {activeIsLoggedIn ? (
               <div className="flex items-center gap-3">
                 <Link to="/dashboard" className="flex items-center gap-2 p-1.5 rounded-full hover:bg-rose-50 transition-colors">
-                  <img
-                    src={CURRENT_USER.photo}
-                    alt={CURRENT_USER.name}
-                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800'; }}
-                    className="w-9 h-9 rounded-full object-cover border-2 border-gold-400"
-                  />
+                  <div className="w-9 h-9 rounded-full bg-maroon-700 text-white flex items-center justify-center font-bold text-sm border-2 border-gold-400">
+                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                  </div>
                   <div className="text-left text-xs">
-                    <p className="font-bold text-dark-800">{CURRENT_USER.name}</p>
+                    <p className="font-bold text-dark-800 max-w-[120px] truncate">{user?.email || 'User'}</p>
                     <p className="text-[10px] text-emerald-700 font-medium flex items-center gap-0.5">
                       <ShieldCheck className="w-3 h-3" /> Verified
                     </p>
@@ -89,10 +95,7 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
                   variant="ghost" 
                   size="sm" 
                   icon={LogOut}
-                  onClick={() => {
-                    if (onLogout) onLogout();
-                    navigate('/');
-                  }}
+                  onClick={handleLogoutClick}
                   title="Logout"
                 />
               </div>
@@ -105,7 +108,7 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
                 </Link>
                 <Link to="/register">
                   <Button variant="primary" size="sm" icon={Sparkles}>
-                    Create Profile
+                    Create Account
                   </Button>
                 </Link>
               </div>
@@ -145,7 +148,7 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
           ))}
 
           <div className="pt-3 border-t border-rose-100 flex flex-col gap-2">
-            {isLoggedIn ? (
+            {activeIsLoggedIn ? (
               <>
                 <Link
                   to="/dashboard"
@@ -157,8 +160,7 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    if (onLogout) onLogout();
-                    navigate('/');
+                    handleLogoutClick();
                   }}
                   className="w-full text-center py-2 text-sm text-rose-700 font-medium hover:bg-rose-50 rounded-xl"
                 >
@@ -174,7 +176,7 @@ export const Navbar = ({ isLoggedIn = false, onLogout }) => {
                 </Link>
                 <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
                   <Button variant="primary" size="sm" fullWidth>
-                    Register
+                    Create Account
                   </Button>
                 </Link>
               </div>

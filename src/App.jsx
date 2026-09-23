@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 
+// Auth Context & Protection
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+
 // Layouts
 import MainLayout from './layouts/MainLayout';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -17,6 +21,9 @@ import Contact from './pages/public/Contact';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+
+// Chat & Calling Page
+import MessagesPage from './pages/chat/MessagesPage';
 
 // Profile Pages
 import BrowseProfiles from './pages/profiles/BrowseProfiles';
@@ -49,52 +56,59 @@ const ScrollToTop = () => {
 };
 
 export function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
   return (
-    <Router>
-      <ScrollToTop />
-      <Routes>
-        
-        {/* Public & Profile Discovery Routes (MainLayout) */}
-        <Route element={<MainLayout isLoggedIn={isLoggedIn} onLogout={() => setIsLoggedIn(false)} />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
-          <Route path="/success-stories" element={<SuccessStories />} />
-          <Route path="/contact" element={<Contact />} />
+    <AuthProvider>
+      <Router>
+        <ScrollToTop />
+        <Routes>
           
-          <Route path="/login" element={<Login onLoginSuccess={() => setIsLoggedIn(true)} />} />
-          <Route path="/register" element={<Register onRegisterSuccess={() => setIsLoggedIn(true)} />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          {/* Public & Profile Discovery Routes (MainLayout) */}
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/success-stories" element={<SuccessStories />} />
+            <Route path="/contact" element={<Contact />} />
+            
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          <Route path="/profiles" element={<BrowseProfiles />} />
-          <Route path="/profiles/:id" element={<ProfileDetails />} />
-          <Route path="/create-profile" element={<CreateProfile />} />
-        </Route>
+            <Route path="/profiles" element={<BrowseProfiles />} />
+            <Route path="/profiles/:id" element={<ProfileDetails />} />
+          </Route>
 
-        {/* User Dashboard Routes (DashboardLayout) */}
-        <Route path="/dashboard" element={<DashboardLayout isLoggedIn={isLoggedIn} onLogout={() => setIsLoggedIn(false)} />}>
-          <Route index element={<DashboardOverview />} />
-          <Route path="my-profile" element={<MyProfile />} />
-          <Route path="edit-profile" element={<EditProfile />} />
-          <Route path="recommended" element={<RecommendedMatches />} />
-          <Route path="shortlisted" element={<ShortlistedProfiles />} />
-          <Route path="sent-interests" element={<SentInterests />} />
-          <Route path="received-interests" element={<ReceivedInterests />} />
-          <Route path="settings" element={<AccountSettings />} />
-        </Route>
+          {/* User Dashboard & Chat Routes - Protected by ProtectedRoute */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<MainLayout />}>
+              <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/create-profile" element={<CreateProfile />} />
+            </Route>
+            <Route path="/dashboard" element={<DashboardLayout />}>
+              <Route index element={<DashboardOverview />} />
+              <Route path="messages" element={<MessagesPage />} />
+              <Route path="create-profile" element={<CreateProfile />} />
+              <Route path="my-profile" element={<MyProfile />} />
+              <Route path="edit-profile" element={<EditProfile />} />
+              <Route path="recommended" element={<RecommendedMatches />} />
+              <Route path="shortlisted" element={<ShortlistedProfiles />} />
+              <Route path="sent-interests" element={<SentInterests />} />
+              <Route path="received-interests" element={<ReceivedInterests />} />
+              <Route path="settings" element={<AccountSettings />} />
+            </Route>
+          </Route>
 
-        {/* Admin Demo Routes (AdminLayout) */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="approvals" element={<ProfileVerification />} />
-          <Route path="profiles" element={<ManageProfiles />} />
-          <Route path="users" element={<ManageUsers />} />
-        </Route>
+          {/* Admin Demo Routes (AdminLayout) */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="approvals" element={<ProfileVerification />} />
+            <Route path="profiles" element={<ManageProfiles />} />
+            <Route path="users" element={<ManageUsers />} />
+          </Route>
 
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

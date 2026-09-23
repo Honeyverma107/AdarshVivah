@@ -723,7 +723,6 @@ export const CURRENT_USER = {
   verified: true,
   verificationBadges: ["Identity Verified", "Photo Verified", "Profession Verified"],
   photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800",
-  completionPercentage: 85,
   about: "I am an energetic product manager based in Mumbai who values both traditional Indian family ethics and modern career ambitions. I enjoy reading history, playing badminton, and weekend family get-togethers.",
   family: {
     father: "Retd. Bank Executive Manager",

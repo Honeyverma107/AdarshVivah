@@ -2,7 +2,7 @@ export const MOCK_DASHBOARD_STATS = {
   profileViews: 142,
   interestsReceived: 12,
   interestsSent: 8,
-  shortlistedByOthers: 34,
+  myShortlist: 5,
   matchScoreAverage: 91
 };
 

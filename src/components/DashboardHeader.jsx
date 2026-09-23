@@ -1,19 +1,22 @@
 import React from 'react';
 import { Bell, Search, ShieldCheck, Sparkles } from 'lucide-react';
-import { CURRENT_USER } from '../data/profiles';
+import { useAuth } from '../context/AuthContext';
 
 export const DashboardHeader = ({ title = "Dashboard Overview", subtitle }) => {
+  const { user } = useAuth();
+  const userName = user?.name || user?.email?.split('@')[0] || 'Member';
+
   return (
     <div className="bg-white rounded-2xl border border-rose-100 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-xl md:text-2xl font-serif font-bold text-dark-800 tracking-tight">{title}</h1>
           <span className="bg-rose-100 text-maroon-700 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-rose-200">
-            Premium Member
+            Verified Member
           </span>
         </div>
         <p className="text-xs text-muted-500 mt-1">
-          {subtitle || `Welcome back, ${CURRENT_USER.name}! Here is your personalized matchmaking update.`}
+          {subtitle || `Welcome back, ${userName}! Here is your personalized matchmaking update.`}
         </p>
       </div>
 
