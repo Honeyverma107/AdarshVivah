@@ -63,7 +63,7 @@ export const SuccessStories = () => {
         <p className="text-xs text-muted-500">
           We would love to feature your wedding story to inspire thousands of families across India.
         </p>
-        <Link to="/contact" className="inline-block pt-2">
+        <Link to="/success-stories/submit" className="inline-block pt-2">
           <Button variant="outline" size="sm">
             Submit Your Wedding Story
           </Button>

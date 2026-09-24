@@ -15,6 +15,7 @@ import {
   Clock
 } from 'lucide-react';
 import Button from './Button';
+import storyApi from '../api/storyApi';
 
 export const ShareStoryModal = ({ isOpen, onClose, onStorySubmit }) => {
   const [coupleName, setCoupleName] = useState('');
@@ -118,7 +119,7 @@ export const ShareStoryModal = ({ isOpen, onClose, onStorySubmit }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
     setErrors(validationErrors);
@@ -133,13 +134,22 @@ export const ShareStoryModal = ({ isOpen, onClose, onStorySubmit }) => {
     if (Object.keys(validationErrors).length === 0) {
       setIsSubmitting(true);
 
-      setTimeout(() => {
-        const formattedDate = formatMarriageDate(marriageDate);
-        const newStory = {
+      try {
+        const formData = new FormData();
+        formData.append('couple_name', coupleName.trim());
+        formData.append('marriage_date', marriageDate);
+        formData.append('location', location.trim());
+        formData.append('story', story.trim());
+        if (photoFile) {
+          formData.append('image', photoFile);
+        }
+
+        const res = await storyApi.submitSuccessStory(formData);
+        const savedStory = res?.data || {
           id: Date.now(),
           coupleName: coupleName.trim(),
           location: location.trim(),
-          marriageDate: formattedDate,
+          marriageDate: marriageDate,
           story: story.trim(),
           image: photoPreview || 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&q=80&w=800',
           badge: 'Submitted Story',
@@ -148,12 +158,19 @@ export const ShareStoryModal = ({ isOpen, onClose, onStorySubmit }) => {
         };
 
         if (onStorySubmit) {
-          onStorySubmit(newStory);
+          onStorySubmit(savedStory);
         }
 
         setIsSubmitting(false);
         setIsSubmitted(true);
-      }, 700);
+      } catch (err) {
+        console.error('Error submitting story in modal:', err);
+        setIsSubmitting(false);
+        setErrors((prev) => ({
+          ...prev,
+          submit: err.response?.data?.detail || 'Failed to submit story. Please try again.',
+        }));
+      }
     }
   };
 

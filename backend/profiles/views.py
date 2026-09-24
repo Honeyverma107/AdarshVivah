@@ -147,47 +147,6 @@ class ProfilePhotoViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Photo deleted successfully.'}, status=status.HTTP_200_OK)
 
 
-class ProfileViewSet(viewsets.ModelViewSet):
-    queryset = Profile.objects.select_related(
-        'user', 'education_details', 'professional_details',
-        'family_details', 'lifestyle_details', 'partner_preferences'
-    ).prefetch_related('photos').all()
-    serializer_class = ProfileSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        gender = self.request.query_params.get('gender')
-        religion = self.request.query_params.get('religion')
-        caste = self.request.query_params.get('caste')
-        city = self.request.query_params.get('city')
-        min_age = self.request.query_params.get('min_age')
-        max_age = self.request.query_params.get('max_age')
-        search = self.request.query_params.get('search')
-
-        # Filter out current user's profile from list
-        if self.request.user and self.request.user.is_authenticated:
-            qs = qs.exclude(user=self.request.user)
-
-        if gender:
-            qs = qs.filter(gender__iexact=gender)
-        if religion:
-            qs = qs.filter(religion__icontains=religion)
-        if caste:
-            qs = qs.filter(caste__icontains=caste)
-        if city:
-            qs = qs.filter(city__icontains=city)
-        if search:
-            qs = qs.filter(
-                Q(user__first_name__icontains=search) |
-                Q(city__icontains=search) |
-                Q(caste__icontains=search) |
-                Q(religion__icontains=search) |
-                Q(professional_details__occupation__icontains=search)
-            )
-
-        return qs.order_by('-created_at')
-
 def save_profile_data(user, profile, data):
     # Update User first_name if provided
     if 'name' in data and data['name']:
@@ -278,6 +237,10 @@ class ProfileViewSet(viewsets.ModelViewSet):
             'user', 'education_details', 'professional_details',
             'family_details', 'lifestyle_details', 'partner_preferences'
         ).prefetch_related('photos')
+
+        # Exclude current authenticated user's own profile from match/recommendation lists
+        if self.request.user and self.request.user.is_authenticated:
+            qs = qs.exclude(user=self.request.user)
 
         gender = self.request.query_params.get('gender')
         religion = self.request.query_params.get('religion')
@@ -409,9 +372,10 @@ class ShortlistViewSet(viewsets.ModelViewSet):
 class SuccessStoryViewSet(viewsets.ModelViewSet):
     queryset = SuccessStory.objects.all()
     serializer_class = SuccessStorySerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'create']:
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
@@ -422,7 +386,12 @@ class SuccessStoryViewSet(viewsets.ModelViewSet):
         return SuccessStory.objects.filter(is_approved=True)
 
     def perform_create(self, serializer):
-        serializer.save(submitted_by=self.request.user, is_approved=False)
+        user = self.request.user if self.request.user and self.request.user.is_authenticated else None
+        image_file = self.request.FILES.get('image') or self.request.FILES.get('photo')
+        extra = {'submitted_by': user, 'is_approved': False}
+        if image_file:
+            extra['image'] = image_file
+        serializer.save(**extra)
 
 
 class DashboardStatsView(APIView):
@@ -558,7 +527,8 @@ class AdminStatsView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
-        total_users = User.objects.count()
+        matrimonial_users = User.objects.filter(is_staff=False, is_superuser=False)
+        total_users = matrimonial_users.count()
         verified_profiles = Profile.objects.filter(is_verified=True).count()
         pending_approvals = Profile.objects.filter(is_verified=False).count()
         active_matches = Connection.objects.filter(status='ACCEPTED').count()

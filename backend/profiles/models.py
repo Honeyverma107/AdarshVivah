@@ -198,3 +198,45 @@ class SuccessStory(models.Model):
 
     def __str__(self):
         return f"Success Story: {self.couple_name} ({'Approved' if self.is_approved else 'Pending'})"
+
+
+class UserReport(models.Model):
+    class ReportReason(models.TextChoices):
+        FAKE_PROFILE = 'FAKE_PROFILE', 'Fake / Inappropriate Profile'
+        HARASSMENT = 'HARASSMENT', 'Harassment / Abuse'
+        INAPPROPRIATE_CONTENT = 'INAPPROPRIATE_CONTENT', 'Inappropriate Content / Photos'
+        SPAM = 'SPAM', 'Spam / Commercial Messages'
+        OTHER = 'OTHER', 'Other Safety Issue'
+
+    class ReportStatus(models.TextChoices):
+        PENDING = 'PENDING', 'Pending Review'
+        UNDER_REVIEW = 'UNDER_REVIEW', 'Under Review'
+        RESOLVED = 'RESOLVED', 'Resolved / Action Taken'
+        DISMISSED = 'DISMISSED', 'Dismissed / Invalid'
+
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_made')
+    reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_against')
+    reason = models.CharField(max_length=50, choices=ReportReason.choices)
+    details = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, choices=ReportStatus.choices, default=ReportStatus.PENDING)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reports_reviewed')
+    admin_notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['reported_user', 'status']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(reporter=models.F('reported_user')),
+                name='prevent_self_report'
+            )
+        ]
+
+    def __str__(self):
+        return f"Report by {self.reporter.email} against {self.reported_user.email} [{self.status}]"
+

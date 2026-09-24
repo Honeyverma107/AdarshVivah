@@ -15,6 +15,7 @@ import Home from './pages/public/Home';
 import About from './pages/public/About';
 import HowItWorks from './pages/public/HowItWorks';
 import SuccessStories from './pages/public/SuccessStories';
+import SubmitSuccessStory from './pages/public/SubmitSuccessStory';
 import Contact from './pages/public/Contact';
 
 // Auth Pages
@@ -68,6 +69,7 @@ export function App() {
             <Route path="/about" element={<About />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/success-stories" element={<SuccessStories />} />
+            <Route path="/success-stories/submit" element={<SubmitSuccessStory />} />
             <Route path="/contact" element={<Contact />} />
             
             <Route path="/login" element={<Login />} />

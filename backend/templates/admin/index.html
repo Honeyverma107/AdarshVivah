@@ -1,0 +1,466 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    :root {
+        --card-bg: #ffffff;
+        --card-border: #e5e7eb;
+        --text-main: #1f2937;
+        --text-muted: #6b7280;
+        --primary-color: #4f46e5;
+        --primary-hover: #4338ca;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --success-color: #10b981;
+    }
+
+    .dashboard-container {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        margin-top: 16px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+    }
+
+    .kpi-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .kpi-title {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+
+    .kpi-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .badge-alert {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 9999px;
+        font-weight: 600;
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-warning {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 9999px;
+        font-weight: 600;
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-success {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 9999px;
+        font-weight: 600;
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .quick-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        background: #4f46e5;
+        color: #ffffff !important;
+        text-decoration: none !important;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 14px;
+        transition: background-color 0.15s ease;
+    }
+
+    .action-btn:hover {
+        background: #4338ca;
+    }
+
+    .action-btn.secondary {
+        background: #374151;
+    }
+
+    .action-btn.secondary:hover {
+        background: #1f2937;
+    }
+
+    .section-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        gap: 24px;
+    }
+
+    .feed-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .feed-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--card-border);
+        padding-bottom: 12px;
+        margin-bottom: 16px;
+    }
+
+    .feed-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .feed-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .feed-table th, .feed-table td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .feed-table th {
+        font-weight: 600;
+        color: var(--text-muted);
+        background: #f9fafb;
+    }
+
+    .feed-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .feed-table a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .feed-table a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h2>AdarshVivah Operational Dashboard</h2>
+
+    <!-- Quick Action Navigation -->
+    <div class="quick-actions">
+        <a href="/admin/verification/identityverification/?status__exact=PENDING" class="action-btn">
+            🛡️ Verify Identity Docs {% if stats.pending_verifications > 0 %}({{ stats.pending_verifications }}){% endif %}
+        </a>
+        <a href="/admin/profiles/userreport/?status__exact=PENDING" class="action-btn secondary">
+            🚨 Moderation Reports {% if stats.pending_reports > 0 %}({{ stats.pending_reports }}){% endif %}
+        </a>
+        <a href="/admin/profiles/successstory/?is_approved__exact=0" class="action-btn secondary">
+            💕 Review Success Stories {% if stats.pending_stories > 0 %}({{ stats.pending_stories }}){% endif %}
+        </a>
+        <a href="/admin/accounts/user/" class="action-btn secondary">
+            👥 Manage Users
+        </a>
+        <a href="/admin/profiles/profile/" class="action-btn secondary">
+            📋 Manage Profiles
+        </a>
+    </div>
+
+    <!-- Real Database KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-title">Total Registered Users</div>
+            <div class="kpi-value">
+                {{ stats.total_users }}
+                <span class="badge-success">{{ stats.active_users }} Active</span>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Profiles Created</div>
+            <div class="kpi-value">
+                {{ stats.total_profiles }}
+                <span class="badge-success">{{ stats.verified_profiles }} Verified</span>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Pending Verifications</div>
+            <div class="kpi-value">
+                {{ stats.pending_verifications }}
+                {% if stats.pending_verifications > 0 %}
+                    <span class="badge-warning">Requires Action</span>
+                {% else %}
+                    <span class="badge-success">Clear</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Pending Safety Reports</div>
+            <div class="kpi-value">
+                {{ stats.pending_reports }}
+                {% if stats.pending_reports > 0 %}
+                    <span class="badge-alert">Attention Needed</span>
+                {% else %}
+                    <span class="badge-success">Clean</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Pending Success Stories</div>
+            <div class="kpi-value">
+                {{ stats.pending_stories }}
+                {% if stats.pending_stories > 0 %}
+                    <span class="badge-warning">Pending Review</span>
+                {% else %}
+                    <span class="badge-success">Up to date</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Interactions</div>
+            <div class="kpi-value">
+                {{ stats.total_connections }}
+                <span class="badge-success">{{ stats.total_messages }} Messages</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Activity Feeds Grid -->
+    <div class="section-grid">
+        <!-- Recent Verifications -->
+        <div class="feed-card">
+            <div class="feed-header">
+                <h3>Latest Verification Submissions</h3>
+                <a href="/admin/verification/identityverification/">View All</a>
+            </div>
+            <table class="feed-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Doc Type</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in recent_verifications %}
+                    <tr>
+                        <td><a href="/admin/verification/identityverification/{{ item.id }}/change/">{{ item.user.email }}</a></td>
+                        <td>{{ item.verification_type }}</td>
+                        <td>
+                            {% if item.status == 'VERIFIED' %}
+                                <span class="badge-success">VERIFIED</span>
+                            {% elif item.status == 'PENDING' %}
+                                <span class="badge-warning">PENDING</span>
+                            {% else %}
+                                <span class="badge-alert">{{ item.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.created_at|date:"M d, H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">No recent verifications.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recent User Reports -->
+        <div class="feed-card">
+            <div class="feed-header">
+                <h3>Recent Safety Reports</h3>
+                <a href="/admin/profiles/userreport/">View All</a>
+            </div>
+            <table class="feed-table">
+                <thead>
+                    <tr>
+                        <th>Reporter</th>
+                        <th>Reported User</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recent_reports %}
+                    <tr>
+                        <td><a href="/admin/profiles/userreport/{{ r.id }}/change/">{{ r.reporter.email }}</a></td>
+                        <td>{{ r.reported_user.email }}</td>
+                        <td>{{ r.get_reason_display }}</td>
+                        <td>
+                            {% if r.status == 'RESOLVED' %}
+                                <span class="badge-success">RESOLVED</span>
+                            {% elif r.status == 'PENDING' %}
+                                <span class="badge-alert">PENDING</span>
+                            {% else %}
+                                <span class="badge-warning">{{ r.status }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">No reports submitted.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recent Users -->
+        <div class="feed-card">
+            <div class="feed-header">
+                <h3>New User Registrations</h3>
+                <a href="/admin/accounts/user/">View All</a>
+            </div>
+            <table class="feed-table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in recent_users %}
+                    <tr>
+                        <td><a href="/admin/accounts/user/{{ u.id }}/change/">{{ u.email }}</a></td>
+                        <td>{{ u.first_name|default:"-" }}</td>
+                        <td>
+                            {% if u.is_active %}
+                                <span class="badge-success">Active</span>
+                            {% else %}
+                                <span class="badge-alert">Disabled</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ u.created_at|date:"M d, H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">No users found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recent Success Stories -->
+        <div class="feed-card">
+            <div class="feed-header">
+                <h3>Success Stories Submissions</h3>
+                <a href="/admin/profiles/successstory/">View All</a>
+            </div>
+            <table class="feed-table">
+                <thead>
+                    <tr>
+                        <th>Couple</th>
+                        <th>Location</th>
+                        <th>Approval Status</th>
+                        <th>Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in recent_stories %}
+                    <tr>
+                        <td><a href="/admin/profiles/successstory/{{ s.id }}/change/">{{ s.couple_name }}</a></td>
+                        <td>{{ s.location }}</td>
+                        <td>
+                            {% if s.is_approved %}
+                                <span class="badge-success">Approved</span>
+                            {% else %}
+                                <span class="badge-warning">Pending Approval</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ s.created_at|date:"M d, H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted);">No success stories yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Standard Django Admin App Registry Listing -->
+    <div style="margin-top: 16px;">
+        <h3>Database Applications & Models</h3>
+        {% if app_list %}
+            <div id="content-main">
+                {% for app in app_list %}
+                    <div class="app-{{ app.app_label }} module" style="margin-bottom: 20px;">
+                        <table style="width:100%;">
+                            <caption>
+                                <a href="{{ app.app_url }}" class="section" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">{{ app.name }}</a>
+                            </caption>
+                            {% for model in app.models %}
+                                <tr class="model-{{ model.object_name|lower }}">
+                                    {% if model.admin_url %}
+                                        <th scope="row"><a href="{{ model.admin_url }}">{{ model.name }}</a></th>
+                                    {% else %}
+                                        <th scope="row">{{ model.name }}</th>
+                                    {% endif %}
+
+                                    {% if model.add_url %}
+                                        <td><a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a></td>
+                                    {% else %}
+                                        <td>&nbsp;</td>
+                                    {% endif %}
+
+                                    {% if model.admin_url %}
+                                        {% if model.view_only %}
+                                            <td><a href="{{ model.admin_url }}" class="viewlink">{% translate 'View' %}</a></td>
+                                        {% else %}
+                                            <td><a href="{{ model.admin_url }}" class="changelink">{% translate 'Change' %}</a></td>
+                                        {% endif %}
+                                    {% else %}
+                                        <td>&nbsp;</td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>{% translate 'You don’t have permission to view or edit anything.' %}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
