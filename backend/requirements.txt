@@ -14,5 +14,5 @@ djangorestframework==3.18.1
 djangorestframework_simplejwt==5.5.1
 hyperlink==21.0.0
 idna==3.20
-gunicorn=26.2.0
+gunicorn==26.2.0
 Incremental==24.11.0
