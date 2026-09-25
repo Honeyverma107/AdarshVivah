@@ -17,7 +17,7 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Seeds initial sample profiles and success stories into MySQL for development/testing ONLY.'
+    help = 'Seeds initial sample profiles and success stories into database for development/testing ONLY.'
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.WARNING('Seeding development/testing database...'))

@@ -304,7 +304,7 @@ TEST_DATA = [
 
 
 class Command(BaseCommand):
-    help = 'Seeds 10 development-only test matrimonial accounts (5 Grooms, 5 Brides) into MySQL database.'
+    help = 'Seeds 10 development-only test matrimonial accounts (5 Grooms, 5 Brides) into database.'
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.WARNING('Seeding development test matrimonial profiles...'))
