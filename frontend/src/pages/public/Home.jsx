@@ -233,8 +233,8 @@ export const Home = () => {
                 onChange={(e) => setSearchState({ ...searchState, lookingFor: e.target.value })}
                 className="w-full bg-cream-50 border border-rose-200 text-dark-800 text-xs rounded-xl p-3 focus:ring-2 focus:ring-maroon-600 focus:outline-none font-medium"
               >
-                <option value="Female">Bride (Female)</option>
-                <option value="Male">Groom (Male)</option>
+                <option value="Female">Bride</option>
+                <option value="Male">Groom</option>
               </select>
             </div>
 
@@ -486,7 +486,7 @@ export const Home = () => {
 
               <div className="space-y-3 pt-2">
                 {[
-                  "Mandatory Identity & Government ID Screening",
+                  "Email & Phone Verified Profiles",
                   "Privacy-Controlled Connections (No public phone displays)",
                   "Custom Photo Visibility Settings (Visible to accepted profiles)",
                   "Strict Matrimonial Policy (Zero tolerance for dating behavior)"

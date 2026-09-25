@@ -125,3 +125,61 @@ class RegisterSerializer(serializers.ModelSerializer):
             is_superuser=False
         )
         return user
+
+
+class SendOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField(
+        required=True,
+        error_messages={
+            'required': 'Email address is required.',
+            'blank': 'Email address cannot be blank.',
+            'invalid': 'Enter a valid email address.'
+        }
+    )
+
+    def validate_email(self, value):
+        email = value.strip().lower()
+        if not email:
+            raise serializers.ValidationError("Email cannot be blank.")
+        return email
+
+
+class VerifyOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField(
+        required=True,
+        error_messages={
+            'required': 'Email address is required.',
+            'invalid': 'Enter a valid email address.'
+        }
+    )
+    otp = serializers.CharField(
+        required=True,
+        max_length=6,
+        min_length=6,
+        error_messages={
+            'required': 'OTP is required.',
+            'blank': 'OTP cannot be blank.',
+            'min_length': 'OTP must be 6 digits.',
+            'max_length': 'OTP must be 6 digits.'
+        }
+    )
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+    def validate_otp(self, value):
+        otp = value.strip()
+        if not otp.isdigit():
+            raise serializers.ValidationError("OTP must contain digits only.")
+        return otp
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    credential = serializers.CharField(
+        required=True,
+        error_messages={
+            'required': 'Google credential token is required.',
+            'blank': 'Google credential token cannot be blank.'
+        }
+    )
+

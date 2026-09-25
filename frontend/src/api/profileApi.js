@@ -4,7 +4,7 @@ export const profileApi = {
   getMe: () => api.get('/profiles/me/'),
   createProfile: (data) => api.post('/profiles/', data),
   updateMe: (data) => api.put('/profiles/me/', data),
-  getProfiles: (params) => api.get('/profiles/', { params }),
+  getProfiles: (params, config = {}) => api.get('/profiles/', { params, ...config }),
   getProfileById: (id) => api.get(`/profiles/${id}/`),
   toggleShortlist: (profileId) => api.post('/shortlists/', { profile_id: profileId }),
   deleteShortlist: (profileId) => api.delete(`/shortlists/${profileId}/`),

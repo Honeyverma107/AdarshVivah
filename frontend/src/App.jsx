@@ -47,6 +47,8 @@ import ManageProfiles from './pages/admin/ManageProfiles';
 import ProfileVerification from './pages/admin/ProfileVerification';
 import ManageUsers from './pages/admin/ManageUsers';
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
 // Scroll To Top helper component
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -57,9 +59,12 @@ const ScrollToTop = () => {
 };
 
 export function App() {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your_google_client_id_placeholder';
+
   return (
-    <AuthProvider>
-      <Router>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <AuthProvider>
+        <Router>
         <ScrollToTop />
         <Routes>
           
@@ -111,6 +116,7 @@ export function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </GoogleOAuthProvider>
   );
 }
 

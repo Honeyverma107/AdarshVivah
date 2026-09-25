@@ -46,3 +46,27 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+
+class EmailOTP(models.Model):
+    class OTPPurpose(models.TextChoices):
+        LOGIN = 'LOGIN', 'Login / Authentication'
+
+    email = models.EmailField(db_index=True)
+    otp_hash = models.CharField(max_length=255)
+    expires_at = models.DateTimeField()
+    attempts = models.IntegerField(default=0)
+    is_used = models.BooleanField(default=False)
+    purpose = models.CharField(max_length=20, choices=OTPPurpose.choices, default=OTPPurpose.LOGIN)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['email', 'is_used', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"OTP for {self.email} ({'used' if self.is_used else 'active'})"
+

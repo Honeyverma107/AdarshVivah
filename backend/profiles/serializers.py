@@ -168,26 +168,35 @@ class ProfileSerializer(serializers.ModelSerializer):
         prof = getattr(obj, 'professional_details', None)
         return prof.annual_income if prof and prof.annual_income and prof.annual_income.strip() else ""
 
-    def get_compatibilityScore(self, obj):
+    def _get_compat(self, obj):
+        compat_cache = self.context.get('compat_cache')
+        if compat_cache is not None and obj.id in compat_cache:
+            return compat_cache[obj.id]
+
         request = self.context.get('request')
         if not request or not request.user or not request.user.is_authenticated:
-            return 88
-        if request.user.id == obj.user.id:
-            return 100
-        viewer_profile = getattr(request.user, 'profile', None)
-        if not viewer_profile:
-            return 85
-        score, _ = calculate_compatibility(viewer_profile, obj)
+            res = (88, ["Complements your preferences", "High cultural alignment"])
+        elif request.user.id == obj.user.id:
+            res = (100, ["Your own profile"])
+        else:
+            viewer_profile = self.context.get('viewer_profile')
+            if viewer_profile is None:
+                viewer_profile = getattr(request.user, 'profile', None)
+            if not viewer_profile:
+                res = (85, ["Complements your preferences"])
+            else:
+                res = calculate_compatibility(viewer_profile, obj)
+
+        if compat_cache is not None:
+            compat_cache[obj.id] = res
+        return res
+
+    def get_compatibilityScore(self, obj):
+        score, _ = self._get_compat(obj)
         return score
 
     def get_whyMatch(self, obj):
-        request = self.context.get('request')
-        if not request or not request.user or not request.user.is_authenticated or request.user.id == obj.user.id:
-            return ["Complements your preferences", "High cultural alignment"]
-        viewer_profile = getattr(request.user, 'profile', None)
-        if not viewer_profile:
-            return ["Complements your preferences"]
-        _, why_match = calculate_compatibility(viewer_profile, obj)
+        _, why_match = self._get_compat(obj)
         return why_match
 
     def get_interestStatus(self, obj):
@@ -195,26 +204,41 @@ class ProfileSerializer(serializers.ModelSerializer):
         if not request or not request.user or not request.user.is_authenticated or request.user.id == obj.user.id:
             return None
 
-        user = request.user
-        other_user = obj.user
+        user_id = request.user.id
+        other_user_id = obj.user.id
 
-        # 1. Check active connection
-        conn = Connection.objects.filter(
-            (models.Q(user1=user, user2=other_user) | models.Q(user1=other_user, user2=user)),
-            status='ACCEPTED'
-        ).first()
-        if conn:
-            return 'ACCEPTED'
+        # 1. Check active connection from pre-fetched context or DB
+        accepted_user_ids = self.context.get('accepted_user_ids')
+        if accepted_user_ids is not None:
+            if other_user_id in accepted_user_ids:
+                return 'ACCEPTED'
+        else:
+            conn = Connection.objects.filter(
+                (models.Q(user1_id=user_id, user2_id=other_user_id) | models.Q(user1_id=other_user_id, user2_id=user_id)),
+                status='ACCEPTED'
+            ).first()
+            if conn:
+                return 'ACCEPTED'
 
-        # 2. Check sent interest
-        sent = Interest.objects.filter(sender=user, receiver=other_user).order_by('-created_at').first()
-        if sent:
-            return sent.status
+        # 2. Check sent interest from pre-fetched context or DB
+        sent_interests = self.context.get('sent_interests')
+        if sent_interests is not None:
+            if other_user_id in sent_interests:
+                return sent_interests[other_user_id]
+        else:
+            sent = Interest.objects.filter(sender_id=user_id, receiver_id=other_user_id).order_by('-created_at').first()
+            if sent:
+                return sent.status
 
-        # 3. Check received interest
-        received = Interest.objects.filter(sender=other_user, receiver=user).order_by('-created_at').first()
-        if received:
-            return f"INCOMING_{received.status}"
+        # 3. Check received interest from pre-fetched context or DB
+        received_interests = self.context.get('received_interests')
+        if received_interests is not None:
+            if other_user_id in received_interests:
+                return f"INCOMING_{received_interests[other_user_id]}"
+        else:
+            received = Interest.objects.filter(sender_id=other_user_id, receiver_id=user_id).order_by('-created_at').first()
+            if received:
+                return f"INCOMING_{received.status}"
 
         return 'NONE'
 
@@ -222,11 +246,15 @@ class ProfileSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request or not request.user or not request.user.is_authenticated:
             return False
+
+        shortlisted_ids = self.context.get('shortlisted_ids')
+        if shortlisted_ids is not None:
+            return obj.id in shortlisted_ids
+
         return Shortlist.objects.filter(user=request.user, target_profile=obj).exists()
 
     def get_identity_verified(self, obj):
-        if hasattr(obj.user, 'identity_verification'):
-            return obj.user.identity_verification.status == 'VERIFIED'
+        # Note: Identity verification is temporarily disabled and will be re-integrated later.
         return False
 
 

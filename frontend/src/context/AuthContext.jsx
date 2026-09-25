@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/api';
+import authApi from '../api/authApi';
 
 const AuthContext = createContext();
 
@@ -35,7 +36,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const response = await api.get('/auth/me/');
+        const response = await authApi.getMe();
         setUser(response.data);
         setToken(localStorage.getItem('access_token') || storedToken);
       } catch (error) {
@@ -53,21 +54,103 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Login handler
+  // Shared token and user persistence helper
+  const handleAuthSuccess = async (authData) => {
+    const { access, refresh, user: userData } = authData;
+
+    localStorage.setItem('access_token', access);
+    localStorage.setItem('refresh_token', refresh);
+    localStorage.setItem('user_info', JSON.stringify(userData));
+
+    setToken(access);
+    setUser(userData);
+
+    return userData;
+  };
+
+  // Helper to check whether matrimonial Profile exists for logged-in user
+  const checkProfileExistence = async () => {
+    try {
+      await api.get('/profiles/me/');
+      return true;
+    } catch (err) {
+      if (err.response && err.response.status === 404) {
+        return false;
+      }
+      // Default to false for non-authenticated or empty profile states
+      return false;
+    }
+  };
+
+  // Send OTP
+  const sendOtp = async (email) => {
+    try {
+      const response = await authApi.sendOtp(email);
+      return { success: true, message: response.data?.message || 'OTP sent successfully.' };
+    } catch (error) {
+      const status = error.response?.status;
+      let errorMessage = 'Failed to send verification code. Please try again.';
+
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = 'Taking too long to send the code. Please try again.';
+      } else if (status === 429) {
+        errorMessage = error.response?.data?.detail || 'Too many OTP requests. Please wait before requesting another code.';
+      } else if (status === 503 || status === 500) {
+        errorMessage = "We couldn't send the verification code right now. Please try again shortly.";
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.email) {
+        errorMessage = Array.isArray(error.response.data.email) ? error.response.data.email[0] : error.response.data.email;
+      }
+      return { success: false, error: errorMessage, status };
+    }
+  };
+
+  // Verify OTP
+  const verifyOtp = async (email, otp) => {
+    try {
+      const response = await authApi.verifyOtp(email, otp);
+      await handleAuthSuccess(response.data);
+      const hasProfile = await checkProfileExistence();
+      return { success: true, user: response.data.user, hasProfile };
+    } catch (error) {
+      const status = error.response?.status;
+      let errorMessage = 'Invalid or expired verification code.';
+
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = 'Verification request timed out. Please try again.';
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.otp) {
+        errorMessage = Array.isArray(error.response.data.otp) ? error.response.data.otp[0] : error.response.data.otp;
+      }
+      return { success: false, error: errorMessage, status };
+    }
+  };
+
+  // Google OAuth Login
+  const loginWithGoogle = async (credential) => {
+    try {
+      const response = await authApi.googleLogin(credential);
+      await handleAuthSuccess(response.data);
+      const hasProfile = await checkProfileExistence();
+      return { success: true, user: response.data.user, hasProfile };
+    } catch (error) {
+      let errorMessage = 'Google authentication failed. Please try again.';
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      }
+      return { success: false, error: errorMessage };
+    }
+  };
+
+  // Legacy/Standard Email + Password Login handler
   const login = async (email, password) => {
     try {
-      const response = await api.post('/auth/login/', { email, password });
-      const { access, refresh, user: userData } = response.data;
-
-      // Store tokens and user info
-      localStorage.setItem('access_token', access);
-      localStorage.setItem('refresh_token', refresh);
-      localStorage.setItem('user_info', JSON.stringify(userData));
-
-      setToken(access);
-      setUser(userData);
-
-      return { success: true };
+      const response = await authApi.login(email, password);
+      await handleAuthSuccess(response.data);
+      const hasProfile = await checkProfileExistence();
+      return { success: true, user: response.data.user, hasProfile };
     } catch (error) {
       let errorMessage = 'Failed to log in. Please try again.';
 
@@ -104,6 +187,10 @@ export const AuthProvider = ({ children }) => {
     token,
     isAuthenticated: Boolean(token && user),
     loading,
+    sendOtp,
+    verifyOtp,
+    loginWithGoogle,
+    checkProfileExistence,
     login,
     logout,
   };

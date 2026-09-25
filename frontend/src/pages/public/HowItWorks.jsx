@@ -9,9 +9,9 @@ export const HowItWorks = () => {
     {
       num: '01',
       title: 'Create & Verify Your Profile',
-      desc: 'Register for free and complete your basic, personal, educational, and family details. Upload government ID for blue check verification.',
+      desc: 'Register for free and complete your basic, personal, educational, and family details.',
       icon: UserPlus,
-      details: ['Government ID Verification', 'Privacy-controlled Photos', 'Family Background Summary']
+      details: ['Email & Phone Verification', 'Privacy-controlled Photos', 'Family Background Summary']
     },
     {
       num: '02',

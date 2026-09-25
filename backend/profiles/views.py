@@ -246,16 +246,29 @@ class ProfileViewSet(viewsets.ModelViewSet):
         religion = self.request.query_params.get('religion')
         caste = self.request.query_params.get('caste')
         city = self.request.query_params.get('city')
+        education = self.request.query_params.get('education')
         search = self.request.query_params.get('search')
 
         if gender:
-            qs = qs.filter(gender__iexact=gender)
-        if religion:
+            g_clean = gender.strip().lower()
+            if g_clean in ['bride', 'female']:
+                qs = qs.filter(Q(gender__iexact='Female') | Q(gender__iexact='Bride'))
+            elif g_clean in ['groom', 'male']:
+                qs = qs.filter(Q(gender__iexact='Male') | Q(gender__iexact='Groom'))
+            elif g_clean != 'all':
+                qs = qs.filter(gender__iexact=gender)
+
+        if religion and religion.strip().lower() != 'all':
             qs = qs.filter(religion__icontains=religion)
-        if caste:
+        if caste and caste.strip().lower() != 'all':
             qs = qs.filter(caste__icontains=caste)
-        if city:
+        if city and city.strip().lower() != 'all':
             qs = qs.filter(city__icontains=city)
+        if education and education.strip().lower() != 'all':
+            qs = qs.filter(
+                Q(education_details__degree__icontains=education) |
+                Q(education_details__education_level__icontains=education)
+            )
         if search:
             qs = qs.filter(
                 Q(user__first_name__icontains=search) |
@@ -266,6 +279,35 @@ class ProfileViewSet(viewsets.ModelViewSet):
             )
 
         return qs.order_by('-created_at')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        request = self.request
+        if request and request.user and request.user.is_authenticated:
+            user = request.user
+            context['viewer_profile'] = getattr(user, 'profile', None)
+            context['shortlisted_ids'] = set(Shortlist.objects.filter(user=user).values_list('target_profile_id', flat=True))
+
+            sent_dict = {}
+            for item in Interest.objects.filter(sender=user).values('receiver_id', 'status'):
+                sent_dict[item['receiver_id']] = item['status']
+            context['sent_interests'] = sent_dict
+
+            recv_dict = {}
+            for item in Interest.objects.filter(receiver=user).values('sender_id', 'status'):
+                recv_dict[item['sender_id']] = item['status']
+            context['received_interests'] = recv_dict
+
+            accepted_users = set()
+            for conn in Connection.objects.filter(Q(user1=user) | Q(user2=user), status='ACCEPTED').values('user1_id', 'user2_id'):
+                if conn['user1_id'] == user.id:
+                    accepted_users.add(conn['user2_id'])
+                else:
+                    accepted_users.add(conn['user1_id'])
+            context['accepted_user_ids'] = accepted_users
+
+        context['compat_cache'] = {}
+        return context
 
     def create(self, request, *args, **kwargs):
         user = request.user

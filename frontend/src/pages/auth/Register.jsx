@@ -196,7 +196,7 @@ export const Register = () => {
           <div className="relative z-10 pt-2 border-t border-maroon-600/60 space-y-2 text-xs text-rose-100">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-gold-400 shrink-0" />
-              <span>Government ID & Phone Verified Profiles</span>
+              <span>Email & Phone Verified Profiles</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-gold-400 shrink-0" />

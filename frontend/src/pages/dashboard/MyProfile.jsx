@@ -284,8 +284,9 @@ export const MyProfile = () => {
 
       </div>
 
-      {/* Dedicated Identity Verification Module Section */}
+      {/* Identity verification is temporarily disabled and will be re-integrated later:
       <IdentityVerificationCard />
+      */}
     </div>
   );
 };

@@ -76,6 +76,10 @@ class Interest(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['sender', 'status']),
+            models.Index(fields=['receiver', 'status']),
+        ]
 
     def __str__(self):
         return f"Interest from {self.sender} -> {self.receiver} ({self.status})"

@@ -108,7 +108,7 @@ class SentInterestsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        interests = Interest.objects.filter(sender=request.user).order_by('-created_at')
+        interests = Interest.objects.filter(sender=request.user).select_related('sender', 'receiver').order_by('-created_at')
         serializer = InterestSerializer(interests, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -117,7 +117,7 @@ class ReceivedInterestsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        interests = Interest.objects.filter(receiver=request.user).order_by('-created_at')
+        interests = Interest.objects.filter(receiver=request.user).select_related('sender', 'receiver').order_by('-created_at')
         serializer = InterestSerializer(interests, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -274,14 +274,30 @@ class ConversationListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        user = request.user
         conversations = Conversation.objects.filter(
-            participants__user=request.user
+            participants__user=user
+        ).prefetch_related(
+            'participants__user',
+            'messages__sender'
         ).distinct().order_by('-updated_at')
+
+        accepted_users = set()
+        for conn in Connection.objects.filter(Q(user1=user) | Q(user2=user), status='ACCEPTED').values('user1_id', 'user2_id'):
+            accepted_users.add(conn['user2_id'] if conn['user1_id'] == user.id else conn['user1_id'])
+
+        blocked_users = set()
+        for blk in BlockedUser.objects.filter(Q(blocker=user) | Q(blocked=user)).values('blocker_id', 'blocked_id'):
+            blocked_users.add(blk['blocked_id'] if blk['blocker_id'] == user.id else blk['blocker_id'])
 
         serializer = ConversationSerializer(
             conversations, 
             many=True, 
-            context={'request_user': request.user}
+            context={
+                'request_user': user,
+                'accepted_user_ids': accepted_users,
+                'blocked_user_ids': blocked_users
+            }
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 

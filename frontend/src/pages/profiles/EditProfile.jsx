@@ -41,8 +41,7 @@ const SECTIONS = [
   { id: 'lifestyle', label: '9. Lifestyle & Hobbies', icon: Coffee },
   { id: 'preferences', label: '10. Partner Preferences', icon: Heart },
   { id: 'photos', label: '11. Photos & Gallery', icon: Camera },
-  { id: 'verification', label: '12. Identity Verification', icon: ShieldCheck },
-  { id: 'privacy', label: '13. Privacy & Settings', icon: Lock }
+  { id: 'privacy', label: '12. Privacy & Settings', icon: Lock }
 ];
 
 export const EditProfile = () => {
@@ -540,7 +539,7 @@ export const EditProfile = () => {
     <div className="space-y-6">
       <DashboardHeader 
         title="Edit My Matrimonial Profile" 
-        subtitle="Manage and update your matrimonial profile details, preferences, and identity verification."
+        subtitle="Manage and update your matrimonial profile details and preferences."
       />
 
       {saved && (
@@ -1234,10 +1233,7 @@ export const EditProfile = () => {
               />
             )}
 
-            {/* TAB 12: IDENTITY VERIFICATION */}
-            {activeTab === 'verification' && (
-              <IdentityVerificationCard />
-            )}
+            {/* Identity verification is temporarily disabled and will be re-integrated later. */}
 
             {/* TAB 13: PRIVACY */}
             {activeTab === 'privacy' && (

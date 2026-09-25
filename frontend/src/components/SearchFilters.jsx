@@ -28,18 +28,21 @@ export const SearchFilters = ({ filters, onFilterChange, onResetFilters }) => {
           Looking For
         </label>
         <div className="grid grid-cols-2 gap-2">
-          {['Female', 'Male'].map((gender) => (
+          {[
+            { label: 'Bride', value: 'Bride' },
+            { label: 'Groom', value: 'Groom' }
+          ].map((item) => (
             <button
-              key={gender}
+              key={item.value}
               type="button"
-              onClick={() => handleChange('gender', gender)}
-              className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all ${
-                filters.gender === gender
+              onClick={() => handleChange('gender', item.value)}
+              className={`py-2.5 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                filters.gender === item.value
                   ? 'bg-maroon-600 text-white border-maroon-600 shadow-xs'
                   : 'bg-rose-50/60 text-dark-800 border-rose-100 hover:bg-rose-100'
               }`}
             >
-              Bride ({gender === 'Female' ? 'Bride' : 'Groom'})
+              {item.label}
             </button>
           ))}
         </div>

@@ -4,6 +4,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000, // 15-second request timeout
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,7 +13,10 @@ const api = axios.create({
 const PUBLIC_ENDPOINTS = [
   '/auth/login',
   '/auth/register',
-  '/auth/token/refresh'
+  '/auth/token/refresh',
+  '/auth/send-otp',
+  '/auth/verify-otp',
+  '/auth/google'
 ];
 
 let isRefreshing = false;
@@ -43,6 +47,15 @@ api.interceptors.request.use(
           config.headers.Authorization = `Bearer ${token}`;
         } else {
           config.headers = { Authorization: `Bearer ${token}` };
+        }
+      }
+    } else {
+      // Strictly prevent stale Authorization headers from interfering with public authentication endpoints
+      if (config.headers) {
+        delete config.headers.Authorization;
+        delete config.headers['Authorization'];
+        if (typeof config.headers.delete === 'function') {
+          config.headers.delete('Authorization');
         }
       }
     }
@@ -134,7 +147,9 @@ function handleSessionExpiration() {
 
   window.dispatchEvent(new CustomEvent('auth:session_expired'));
 
-  if (window.location.pathname !== '/login') {
+  const publicPaths = ['/login', '/register', '/', '/how-it-works', '/success-stories', '/about'];
+  const currentPath = window.location.pathname;
+  if (!publicPaths.some((p) => currentPath === p || currentPath.startsWith('/login') || currentPath.startsWith('/register'))) {
     window.location.href = '/login?session_expired=true';
   }
 }

@@ -62,38 +62,47 @@ class ConversationSerializer(serializers.ModelSerializer):
         request_user = self.context.get('request_user')
         if not request_user:
             return None
-        participant = obj.participants.exclude(user=request_user).first()
-        if participant:
-            return UserBasicSerializer(participant.user).data
+        parts = [p for p in obj.participants.all() if p.user_id != request_user.id]
+        if parts:
+            return UserBasicSerializer(parts[0].user).data
         return None
 
     def get_latest_message(self, obj):
-        latest = obj.messages.order_by('-created_at').first()
-        if latest:
-            return MessageSerializer(latest).data
+        messages = list(obj.messages.all())
+        if messages:
+            messages.sort(key=lambda m: m.created_at, reverse=True)
+            return MessageSerializer(messages[0]).data
         return None
 
     def get_unread_count(self, obj):
         request_user = self.context.get('request_user')
         if not request_user:
             return 0
-        return obj.messages.filter(is_read=False).exclude(sender=request_user).count()
+        return sum(1 for m in obj.messages.all() if not m.is_read and m.sender_id != request_user.id)
+
+    def _can_interact_helper(self, obj):
+        request_user = self.context.get('request_user')
+        other = self.get_other_participant(obj)
+        if not request_user or not other:
+            return False
+        other_user_id = other['id']
+
+        blocked_user_ids = self.context.get('blocked_user_ids')
+        if blocked_user_ids is not None and other_user_id in blocked_user_ids:
+            return False
+
+        accepted_user_ids = self.context.get('accepted_user_ids')
+        if accepted_user_ids is not None:
+            return other_user_id in accepted_user_ids
+
+        other_user = User.objects.filter(id=other_user_id).first()
+        return Connection.can_interact(request_user, other_user)
 
     def get_can_call(self, obj):
-        request_user = self.context.get('request_user')
-        other = self.get_other_participant(obj)
-        if not request_user or not other:
-            return False
-        other_user = User.objects.filter(id=other['id']).first()
-        return Connection.can_interact(request_user, other_user)
+        return self._can_interact_helper(obj)
 
     def get_can_message(self, obj):
-        request_user = self.context.get('request_user')
-        other = self.get_other_participant(obj)
-        if not request_user or not other:
-            return False
-        other_user = User.objects.filter(id=other['id']).first()
-        return Connection.can_interact(request_user, other_user)
+        return self._can_interact_helper(obj)
 
 
 class CallSerializer(serializers.ModelSerializer):

@@ -51,15 +51,6 @@ export const DashboardOverview = () => {
       })
       .catch((err) => console.error('Error fetching dashboard stats:', err));
 
-    profileApi.getMe()
-      .then(() => setHasProfile(true))
-      .catch((err) => {
-        if (err.response && err.response.status === 404) {
-          setHasProfile(false);
-          setStats(prev => ({ ...prev, hasProfile: false }));
-        }
-      });
-
     profileApi.getProfiles()
       .then((res) => {
         const data = Array.isArray(res.data) ? res.data : res.data.results || [];
